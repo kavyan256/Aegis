@@ -1,56 +1,162 @@
 const express = require("express")
-const Emergency = require("../models/Emergency")
-const User = require("../models/User")
-const Log = require("../models/Log")
-
-const {authenticate} = require("../middleware/auth")
+const { Prisma } = require("@prisma/client")
+const { getPrismaClient } = require("../config/prisma")
+const { authenticate } = require("../middleware/auth")
 const adminAuth = require("../middleware/adminAuth")
+const { generateId } = require("../utils/hashGenerator")
+
+const prisma = getPrismaClient()
 const router = express.Router()
+
+const userSelect = {
+  id: true,
+  name: true,
+  studentId: true,
+  phoneNumber: true,
+  emergencyContact: true,
+  hostel: true,
+  roomNumber: true,
+  role: true,
+}
+
+const normalizeEmergencyStatus = (status) => {
+  if (!status) {
+    return null
+  }
+
+  const normalized = String(status).trim().toLowerCase()
+  if (normalized === "false_alarm") {
+    return "resolved"
+  }
+
+  if (["active", "responded", "resolved"].includes(normalized)) {
+    return normalized
+  }
+
+  return null
+}
+
+const getLocationValues = (location, fallbackLatitude, fallbackLongitude) => {
+  const latitude = location?.latitude ?? fallbackLatitude
+  const longitude = location?.longitude ?? fallbackLongitude
+  const address = location?.address ?? location?.name ?? null
+
+  return {
+    latitude,
+    longitude,
+    address,
+  }
+}
+
+const parseMediaItems = (media) => {
+  if (!Array.isArray(media)) {
+    return []
+  }
+
+  return media
+    .map((item) => {
+      if (typeof item === "string") {
+        return {
+          url: item,
+          mediaType: "photo",
+        }
+      }
+
+      if (!item || !item.url) {
+        return null
+      }
+
+      const mediaType = item.mediaType === "audio" ? "audio" : "photo"
+
+      return {
+        url: item.url,
+        mediaType,
+      }
+    })
+    .filter(Boolean)
+}
 
 // Create emergency alert
 router.post("/alert", authenticate, async (req, res) => {
   try {
     const { type, description, location, media, emergencyContactCalled } = req.body
+    const { latitude, longitude, address } = getLocationValues(location, req.body.latitude, req.body.longitude)
 
-    const emergency = new Emergency({
-      userId: req.user.userId,
-      type,
-      description,
-      location,
-      media,
-      emergencyContactCalled
+    if (latitude === undefined || longitude === undefined || latitude === null || longitude === null) {
+      return res.status(400).json({ message: "Latitude and longitude are required" })
+    }
+
+    const mediaItems = parseMediaItems(media)
+
+    const emergency = await prisma.$transaction(async (tx) => {
+      const createdEmergency = await tx.emergency.create({
+        data: {
+          id: generateId(),
+          userId: req.user.userId,
+          type,
+          description: description || null,
+          latitude: new Prisma.Decimal(latitude),
+          longitude: new Prisma.Decimal(longitude),
+          address: address || null,
+        },
+        include: {
+          user: {
+            select: userSelect,
+          },
+        },
+      })
+
+      if (mediaItems.length > 0) {
+        await tx.emergencyMedia.createMany({
+          data: mediaItems.map((item) => ({
+            id: generateId(),
+            emergencyId: createdEmergency.id,
+            url: item.url,
+            mediaType: item.mediaType,
+            uploadedAt: new Date(),
+          })),
+        })
+      }
+
+      await tx.log.create({
+        data: {
+          id: generateId(),
+          userId: req.user.userId,
+          action: "emergency_alert",
+          location: address || `${latitude}, ${longitude}`,
+          success: true,
+          details: {
+            type,
+            description,
+            emergencyContactCalled: !!emergencyContactCalled,
+          },
+          scanType: "manual",
+        },
+      })
+
+      return createdEmergency
     })
-
-    await emergency.save()
-
-    // Log the emergency alert
-    const log = new Log({
-      userId: req.user.userId,
-      action: "emergency_alert",
-      details: `Emergency alert: ${type} - ${description}`,
-      location: location ? `${location.latitude}, ${location.longitude}` : null,
-    })
-    await log.save()
-
-    // Populate user details for response
-    await emergency.populate("userId", "name studentId phoneNumber emergencyContact")
 
     res.status(201).json({
       message: "Emergency alert sent successfully",
       emergency: {
-        id: emergency._id,
+        id: emergency.id,
         type: emergency.type,
         description: emergency.description,
-        location: emergency.location,
-        media: emergency.media,
-        emergencyContactCalled: emergency.emergencyContactCalled,
+        location: {
+          latitude: emergency.latitude,
+          longitude: emergency.longitude,
+          address: emergency.address,
+        },
+        media,
+        emergencyContactCalled: !!emergencyContactCalled,
         status: emergency.status,
         createdAt: emergency.createdAt,
         student: {
-          name: emergency.userId.name,
-          studentId: emergency.userId.studentId,
-          phoneNumber: emergency.userId.phoneNumber,
-          emergencyContact: emergency.userId.emergencyContact,
+          name: emergency.user.name,
+          studentId: emergency.user.studentId,
+          phoneNumber: emergency.user.phoneNumber,
+          emergencyContact: emergency.user.emergencyContact,
         },
       },
     })
@@ -64,18 +170,30 @@ router.post("/alert", authenticate, async (req, res) => {
 router.get("/my-alerts", authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query
+    const take = Math.min(Number.parseInt(limit, 10) || 10, 50)
+    const skip = (Number.parseInt(page, 10) - 1) * take
 
-    const emergencies = await Emergency.find({ userId: req.user.userId })
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+    const emergencies = await prisma.emergency.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
+    })
 
-    const total = await Emergency.countDocuments({ userId: req.user.userId })
+    const total = await prisma.emergency.count({
+      where: { userId: req.user.userId },
+    })
 
     res.json({
       emergencies,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      totalPages: Math.ceil(total / take),
+      currentPage: Number.parseInt(page, 10),
     })
   } catch (error) {
     console.error("Emergency history error:", error)
@@ -87,18 +205,30 @@ router.get("/my-alerts", authenticate, async (req, res) => {
 router.get("/history", authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query
+    const take = Math.min(Number.parseInt(limit, 10) || 10, 50)
+    const skip = (Number.parseInt(page, 10) - 1) * take
 
-    const emergencies = await Emergency.find({ userId: req.user.userId })
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+    const emergencies = await prisma.emergency.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
+    })
 
-    const total = await Emergency.countDocuments({ userId: req.user.userId })
+    const total = await prisma.emergency.count({
+      where: { userId: req.user.userId },
+    })
 
     res.json({
       emergencies,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      totalPages: Math.ceil(total / take),
+      currentPage: Number.parseInt(page, 10),
     })
   } catch (error) {
     console.error("Emergency history error:", error)
@@ -109,9 +239,16 @@ router.get("/history", authenticate, async (req, res) => {
 // Admin: Get all active emergencies
 router.get("/admin/active", [authenticate, adminAuth], async (req, res) => {
   try {
-    const emergencies = await Emergency.find({ status: "active" })
-      .populate("userId", "name studentId hostel roomNumber phoneNumber emergencyContact")
-      .sort({ createdAt: -1 })
+    const emergencies = await prisma.emergency.findMany({
+      where: { status: "active" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
+    })
 
     res.json({ emergencies })
   } catch (error) {
@@ -124,23 +261,41 @@ router.get("/admin/active", [authenticate, adminAuth], async (req, res) => {
 router.get("/admin/all", [authenticate, adminAuth], async (req, res) => {
   try {
     const { type, status, page = 1, limit = 20 } = req.query
+    const take = Math.min(Number.parseInt(limit, 10) || 20, 100)
+    const skip = (Number.parseInt(page, 10) - 1) * take
+    const normalizedStatus = status ? normalizeEmergencyStatus(status) : null
 
-    const query = {}
-    if (type) query.type = type
-    if (status) query.status = status
+    if (status && !normalizedStatus) {
+      return res.status(400).json({ message: "Invalid status" })
+    }
 
-    const emergencies = await Emergency.find(query)
-      .populate("userId", "name studentId hostel roomNumber phoneNumber")
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+    const emergencies = await prisma.emergency.findMany({
+      where: {
+        ...(type ? { type } : {}),
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
+    })
 
-    const total = await Emergency.countDocuments(query)
+    const total = await prisma.emergency.count({
+      where: {
+        ...(type ? { type } : {}),
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
+      },
+    })
 
     res.json({
       emergencies,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      totalPages: Math.ceil(total / take),
+      currentPage: Number.parseInt(page, 10),
     })
   } catch (error) {
     console.error("Admin emergencies fetch error:", error)
@@ -152,35 +307,59 @@ router.get("/admin/all", [authenticate, adminAuth], async (req, res) => {
 router.put("/admin/:id/status", [authenticate, adminAuth], async (req, res) => {
   try {
     const { status, response } = req.body
+    const normalizedStatus = normalizeEmergencyStatus(status)
 
-    if (!["active", "resolved", "false_alarm"].includes(status)) {
+    if (!normalizedStatus) {
       return res.status(400).json({ message: "Invalid status" })
     }
 
-    const emergency = await Emergency.findById(req.params.id).populate("userId", "name studentId")
+    const emergency = await prisma.emergency.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
+    })
 
     if (!emergency) {
       return res.status(404).json({ message: "Emergency not found" })
     }
 
-    emergency.status = status
-    emergency.respondedBy = req.user.userId
-    emergency.respondedAt = new Date()
-    if (response) emergency.response = response
-
-    await emergency.save()
-
-    // Log the admin response
-    const log = new Log({
-      userId: emergency.userId._id,
-      action: `emergency_${status}`,
-      details: `Emergency marked as ${status} by admin${response ? `: ${response}` : ""}`,
+    const updatedEmergency = await prisma.emergency.update({
+      where: { id: req.params.id },
+      data: {
+        status: normalizedStatus,
+        respondedById: req.user.userId,
+        responseTime: new Date(),
+        resolvedTime: normalizedStatus === "resolved" ? new Date() : null,
+      },
+      include: {
+        user: {
+          select: userSelect,
+        },
+        media: true,
+      },
     })
-    await log.save()
+
+    await prisma.log.create({
+      data: {
+        id: generateId(),
+        userId: emergency.userId,
+        action: "emergency_alert",
+        success: true,
+        details: {
+          message: `Emergency marked as ${normalizedStatus} by admin${response ? `: ${response}` : ""}`,
+          response: response || null,
+        },
+        scanType: "manual",
+      },
+    })
 
     res.json({
-      message: `Emergency status updated to ${status}`,
-      emergency,
+      message: `Emergency status updated to ${normalizedStatus}`,
+      emergency: updatedEmergency,
     })
   } catch (error) {
     console.error("Emergency status update error:", error)
@@ -194,22 +373,26 @@ router.get("/admin/stats", [authenticate, adminAuth], async (req, res) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const stats = await Emergency.aggregate([
-      {
-        $facet: {
-          total: [{ $count: "count" }],
-          active: [{ $match: { status: "active" } }, { $count: "count" }],
-          today: [{ $match: { createdAt: { $gte: today } } }, { $count: "count" }],
-          byType: [{ $group: { _id: "$type", count: { $sum: 1 } } }],
+    const [total, active, todayCount, byType] = await Promise.all([
+      prisma.emergency.count(),
+      prisma.emergency.count({ where: { status: "active" } }),
+      prisma.emergency.count({ where: { createdAt: { gte: today } } }),
+      prisma.emergency.groupBy({
+        by: ["type"],
+        _count: {
+          _all: true,
         },
-      },
+      }),
     ])
 
     res.json({
-      total: stats[0].total[0]?.count || 0,
-      active: stats[0].active[0]?.count || 0,
-      today: stats[0].today[0]?.count || 0,
-      byType: stats[0].byType,
+      total,
+      active,
+      today: todayCount,
+      byType: byType.map((item) => ({
+        _id: item.type,
+        count: item._count._all,
+      })),
     })
   } catch (error) {
     console.error("Emergency stats error:", error)
@@ -220,9 +403,13 @@ router.get("/admin/stats", [authenticate, adminAuth], async (req, res) => {
 // Get emergency contacts
 router.get("/contacts", authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select("emergencyContact")
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        emergencyContact: true,
+      },
+    })
 
-    // Default emergency contacts
     const defaultContacts = [
       { name: "Campus Security", phone: "911", type: "security" },
       { name: "Medical Emergency", phone: "108", type: "medical" },
@@ -231,7 +418,7 @@ router.get("/contacts", authenticate, async (req, res) => {
 
     const contacts = [
       ...defaultContacts,
-      ...(user.emergencyContact
+      ...(user?.emergencyContact
         ? [
             {
               name: "Personal Emergency Contact",

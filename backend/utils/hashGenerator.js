@@ -1,48 +1,64 @@
 const crypto = require("crypto")
-const User = require("../models/User")
-const Passkey = require("../models/Passkey")
+const { getPrismaClient } = require("../config/prisma")
 
-const generatePasskeyHash = (userId, deviceId, date) => {
-  const dateString = date.toISOString().split("T")[0] // YYYY-MM-DD format
-  const data = `${userId}${deviceId}${dateString}`
+const prisma = getPrismaClient()
+
+const generateId = () => crypto.randomBytes(12).toString("hex")
+
+const generatePasskeyHash = (userId, identifier, date) => {
+  const dateString = date.toISOString().split("T")[0]
+  const data = [userId, identifier || "", dateString].join(":")
+
   return crypto.createHash("sha256").update(data).digest("hex")
 }
 
 const generateDailyPasskeys = async () => {
   try {
     const today = new Date()
-    const tomorrow = new Date(today)
+    const todayStart = new Date(today)
+    todayStart.setHours(0, 0, 0, 0)
+
+    const tomorrow = new Date(todayStart)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(0, 0, 0, 0)
 
-    // Get all active students
-    const students = await User.find({
-      role: "student",
-      isActive: true,
-    }).select("_id deviceId")
-
-    
+    const students = await prisma.user.findMany({
+      where: {
+        role: "student",
+        isActive: true,
+      },
+      select: {
+        id: true,
+        studentId: true,
+        email: true,
+      },
+    })
 
     const passkeyPromises = students.map(async (student) => {
-      const hash = generatePasskeyHash(student._id, student.deviceId, today)
-
-      // Check if passkey already exists for today
-      const existingPasskey = await Passkey.findOne({
-        userId: student._id,
-        date: {
-          $gte: new Date(today.setHours(0, 0, 0, 0)),
-          $lt: new Date(today.setHours(23, 59, 59, 999)),
+      const existingPasskey = await prisma.passkey.findFirst({
+        where: {
+          userId: student.id,
+          createdAt: {
+            gte: todayStart,
+            lt: tomorrow,
+          },
         },
       })
 
-      if (!existingPasskey) {
-        return Passkey.create({
-          userId: student._id,
+      if (existingPasskey) {
+        return existingPasskey
+      }
+
+      const hash = generatePasskeyHash(student.id, student.studentId || student.email, today)
+
+      return prisma.passkey.create({
+        data: {
+          id: generateId(),
+          userId: student.id,
           hash,
           date: today,
           expiresAt: tomorrow,
-        })
-      }
+        },
+      })
     })
 
     await Promise.all(passkeyPromises)
@@ -55,15 +71,15 @@ const generateDailyPasskeys = async () => {
 
 const validatePasskey = async (hash, userId) => {
   try {
-    const today = new Date()
-    const passkey = await Passkey.findOne({
-      hash,
-      userId,
-      date: {
-        $gte: new Date(today.setHours(0, 0, 0, 0)),
-        $lt: new Date(today.setHours(23, 59, 59, 999)),
+    const passkey = await prisma.passkey.findFirst({
+      where: {
+        hash,
+        userId,
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
       },
-      expiresAt: { $gt: new Date() },
     })
 
     return !!passkey
@@ -74,6 +90,7 @@ const validatePasskey = async (hash, userId) => {
 }
 
 module.exports = {
+  generateId,
   generatePasskeyHash,
   generateDailyPasskeys,
   validatePasskey,

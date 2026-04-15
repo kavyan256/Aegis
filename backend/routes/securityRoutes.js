@@ -1,47 +1,88 @@
 const express = require("express")
-const Passkey = require("../models/Passkey")
-const User = require("../models/User")
-const Log = require("../models/Log")
+const { getPrismaClient } = require("../config/prisma")
 const { authenticate } = require("../middleware/auth")
+const { generateId } = require("../utils/hashGenerator")
+
+const prisma = getPrismaClient()
 const router = express.Router()
+
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  studentId: true,
+  hostel: true,
+  roomNumber: true,
+  phoneNumber: true,
+  emergencyContact: true,
+}
+
+const buildPasskeyResponse = (passkey) => ({
+  id: passkey.id,
+  hash: passkey.hash,
+  createdAt: passkey.createdAt,
+  expiresAt: passkey.expiresAt,
+  isActive: !passkey.isUsed && passkey.expiresAt > new Date(),
+})
 
 router.post("/validate", authenticate, async (req, res) => {
   try {
     const { hash, location } = req.body
 
-    // Find the passkey
-    const passkey = await Passkey.findOne({ hash, isActive: true }).populate(
-      "userId",
-      "name studentId hostel roomNumber",
-    )
+    if (!hash) {
+      return res.status(400).json({ message: "Passkey hash is required" })
+    }
+
+    const passkey = await prisma.passkey.findFirst({
+      where: {
+        hash,
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          select: userSelect,
+        },
+      },
+    })
 
     if (!passkey) {
       return res.status(400).json({ message: "Invalid or expired passkey" })
     }
 
-    // Check if passkey is still valid (not expired)
-    if (new Date() > passkey.expiresAt) {
-      return res.status(400).json({ message: "Passkey has expired" })
-    }
-
-    // Log the entry/exit
-    const log = new Log({
-      userId: passkey.userId._id,
-      action: "entry_exit",
-      location,
-      timestamp: new Date(),
-      details: `Passkey validated at ${location}`,
+    await prisma.passkey.update({
+      where: { id: passkey.id },
+      data: {
+        isUsed: true,
+      },
     })
-    await log.save()
+
+    await prisma.log.create({
+      data: {
+        id: generateId(),
+        userId: passkey.userId,
+        action: "scan_attempt",
+        location: location || null,
+        success: true,
+        details: {
+          message: `Passkey validated at ${location || "unknown location"}`,
+        },
+        scanType: "manual",
+      },
+    })
 
     res.json({
       message: "Passkey validated successfully",
       student: {
-        name: passkey.userId.name,
-        studentId: passkey.userId.studentId,
-        hostel: passkey.userId.hostel,
-        roomNumber: passkey.userId.roomNumber,
+        name: passkey.user.name,
+        studentId: passkey.user.studentId,
+        hostel: passkey.user.hostel,
+        roomNumber: passkey.user.roomNumber,
       },
+      passkey: buildPasskeyResponse(passkey),
       timestamp: new Date(),
     })
   } catch (error) {
@@ -52,35 +93,37 @@ router.post("/validate", authenticate, async (req, res) => {
 
 router.post("/log", authenticate, async (req, res) => {
   try {
-    let { action, location , guardId, guardName} = req.body
-
-    const totalLogs = await Log.countDocuments()
-    
-    if (totalLogs > 0){
-      const entryLog = await Log.findOne({ userId : req.user._id}).sort({ timestamp: -1 })
-
-      if (entryLog && entryLog.action == "entry"){
-          action = "exit"
-      }
-    }
-
-    const log = new Log({
-      userId: req.user._id,
-      action,
-      location,
-      guardId,
-      guardName,
-      timestamp: new Date(),
+    let { action, location, guardId, guardName } = req.body
+    const allowedActions = new Set(["entry", "exit", "scan_attempt"])
+    const previousLog = await prisma.log.findFirst({
+      where: { userId: req.user.userId },
+      orderBy: { createdAt: "desc" },
     })
 
-    await log.save()
+    if (!action || !allowedActions.has(action)) {
+      action = previousLog?.action === "entry" ? "exit" : "entry"
+    }
 
+    const log = await prisma.log.create({
+      data: {
+        id: generateId(),
+        userId: req.user.userId,
+        action,
+        location: location || null,
+        guardId: guardId || null,
+        guardName: guardName || null,
+        success: true,
+        details: {
+          message: "Security log created successfully",
+        },
+        scanType: "manual",
+      },
+    })
 
     res.status(200).json({
       message: "Security log created successfully",
       log,
     })
-
   } catch (error) {
     console.error("Security log error:", error)
     res.status(500).json({ message: "Server error creating security log" })
@@ -91,14 +134,31 @@ router.get("/logs", authenticate, async (req, res) => {
   try {
     const { location } = req.query
 
-    const query = {}
-    if (location && location.trim().length > 0) {
-      query.location = location.trim()
-    }
-
-    const logs = await Log.findAll(query)
-      .sort({ createdAt: -1 })
-      .populate("userId", "name studentId role hostel roomNumber")
+    const logs = await prisma.log.findMany({
+      where: {
+        ...(location && location.trim().length > 0
+          ? {
+              location: {
+                contains: location.trim(),
+                mode: "insensitive",
+              },
+            }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            studentId: true,
+            role: true,
+            hostel: true,
+            roomNumber: true,
+          },
+        },
+      },
+    })
 
     res.status(200).json({ logs })
   } catch (error) {
@@ -106,6 +166,5 @@ router.get("/logs", authenticate, async (req, res) => {
     res.status(500).json({ message: "Server error fetching security logs" })
   }
 })
-
 
 module.exports = router

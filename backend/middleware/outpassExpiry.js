@@ -1,35 +1,35 @@
-const Outpass = require("../models/Outpass");
+const { getPrismaClient } = require("../config/prisma")
+
+const prisma = getPrismaClient()
 
 // Middleware to automatically check and expire old outpasses
 const checkOutpassExpiry = async (req, res, next) => {
   try {
     const currentDate = new Date();
+    const startOfToday = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
     
     // Update expired outpasses in the background
-    const expiredOutpasses = await Outpass.updateMany(
+    const expiredOutpasses = await prisma.outpass.updateMany(
       {
-        status: { $in: ["pending", "approved"] },
-        $or: [
-          // Outpasses where expected return date has passed
-          { expectedReturnDate: { $lt: currentDate } },
-          // Outpasses from previous days that are still pending/approved
-          { 
-            outDate: { $lt: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()) },
-            status: { $in: ["pending", "approved"] }
-          }
-        ]
+        status: {
+          in: ["pending", "approved"],
+        },
+        OR: [
+          {
+            expectedReturnDate: {
+              lt: currentDate,
+            },
+          },
+          {
+            outDate: {
+              lt: startOfToday,
+            },
+          },
+        ],
       },
       {
-        $set: { 
+        data: {
           status: "expired"
-        },
-        $push: {
-          auditTrail: {
-            status: "expired",
-            changedBy: null,
-            changedAt: currentDate,
-            remarks: "Auto-expired due to time limit"
-          }
         }
       }
     );

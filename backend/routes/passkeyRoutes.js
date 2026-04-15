@@ -1,168 +1,211 @@
 const express = require("express")
-const Passkey = require("../models/Passkey")
-const User = require("../models/User")
-const GuardUser = require("../models/GuardUser")
-const Log = require("../models/Log")
-const { authenticate } = require("../middleware/auth");
-const { generatePasskeyHash } = require("../utils/hashGenerator")
+const { getPrismaClient } = require("../config/prisma")
+const { authenticate } = require("../middleware/auth")
+const { generatePasskeyHash, generateId } = require("../utils/hashGenerator")
+
+const prisma = getPrismaClient()
 const router = express.Router()
 
-// Get today's passkey for authenticate user
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  gender: true,
+  department: true,
+  year: true,
+  hostel: true,
+  roomNumber: true,
+  phoneNumber: true,
+  emergencyContact: true,
+  profilePhoto: true,
+  studentId: true,
+  guardId: true,
+  isActive: true,
+}
+
+const buildPasskeyResponse = (passkey) => ({
+  id: passkey.id,
+  hash: passkey.hash,
+  createdAt: passkey.createdAt,
+  expiresAt: passkey.expiresAt,
+  isActive: !passkey.isUsed && passkey.expiresAt > new Date(),
+})
+
+const getTodayRange = () => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  return { today, tomorrow }
+}
+
+const createDailyPasskey = async (userId) => {
+  const { today, tomorrow } = getTodayRange()
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      studentId: true,
+      guardId: true,
+      email: true,
+    },
+  })
+
+  if (!user) {
+    return null
+  }
+
+  const existingPasskey = await prisma.passkey.findFirst({
+    where: {
+      userId: user.id,
+      createdAt: {
+        gte: today,
+        lt: tomorrow,
+      },
+    },
+  })
+
+  if (existingPasskey) {
+    return existingPasskey
+  }
+
+  return prisma.passkey.create({
+    data: {
+      id: generateId(),
+      userId: user.id,
+      hash: generatePasskeyHash(user.id, user.studentId || user.guardId || user.email, today),
+      date: today,
+      expiresAt: tomorrow,
+    },
+  })
+}
+
 router.get("/today", authenticate, async (req, res) => {
   try {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const { today } = getTodayRange()
 
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    // Delete all previous passkeys for this user except today's
-    await Passkey.deleteMany({
-      userId: req.user._id,
-      createdAt: { $lt: today }
-    })
-    
-    let passkey = await Passkey.findOne({
-      userId: req.user._id,
-      createdAt: { $gte: today, $lt: tomorrow },
-    })
-
-    if (!passkey) {
-      // Generate new passkey for today
-      const user = await User.findOne({studentId : req.user.studentId})
-      const hash = generatePasskeyHash(user.studentId, user.deviceId, today)
-
-      passkey = new Passkey({
-        userId: req.user._id,
-        hash,
-        date : new Date(),
-        expiresAt: tomorrow,
-      })
-
-      await passkey.save()
-    }
-
-    res.json({
-      passkey: {
-        id: passkey._id,
-        hash: passkey.hash,
-        createdAt: passkey.createdAt,
-        expiresAt: passkey.expiresAt,
-        isActive: passkey.isActive,
+    await prisma.passkey.deleteMany({
+      where: {
+        userId: req.user.userId,
+        createdAt: {
+          lt: today,
+        },
       },
     })
 
-  } catch (error) {
+    const passkey = await createDailyPasskey(req.user.userId)
 
-    if (error.code === 11000) {
-    console.error("Duplicate hash detected:", error.keyValue.hash);
-    // Decide: skip, regenerate new hash, or update existing passkey
-    } else {
-      console.error("Passkey fetch error:", error)
-      res.status(500).json({ message: "Server error fetching passkey" })
+    if (!passkey) {
+      return res.status(404).json({ message: "User not found" })
     }
+
+    res.json({ passkey: buildPasskeyResponse(passkey) })
+  } catch (error) {
+    if (error.code === "P2002") {
+      console.error("Duplicate passkey hash detected:", error.meta?.target)
+      return res.status(400).json({ message: "Unable to generate a unique passkey" })
+    }
+
+    console.error("Passkey fetch error:", error)
+    res.status(500).json({ message: "Server error fetching passkey" })
   }
 })
 
 router.get("/todayGuard", authenticate, async (req, res) => {
   try {
+    const { today } = getTodayRange()
 
-    console.log("Entered here")
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    // Delete all previous passkeys for this user except today's
-    await Passkey.deleteMany({
-      userId: req.user._id,
-      createdAt: { $lt: today }
-    })
-    
-    let passkey = await Passkey.findOne({
-      userId: req.user._id,
-      createdAt: { $gte: today, $lt: tomorrow },
-    })
-
-    console.log(req.user)
-
-    if (!passkey) {
-      // Generate new passkey for today
-      const user = await GuardUser.findOne({guardId : req.user.guardId})
-      const hash = generatePasskeyHash(user.guardId, user.deviceId, today)
-
-      passkey = new Passkey({
-        userId: req.user._id,
-        hash,
-        date : new Date(),
-        expiresAt: tomorrow,
-      })
-
-      await passkey.save()
-    }
-
-    res.json({
-      passkey: {
-        id: passkey._id,
-        hash: passkey.hash,
-        createdAt: passkey.createdAt,
-        expiresAt: passkey.expiresAt,
-        isActive: passkey.isActive,
+    await prisma.passkey.deleteMany({
+      where: {
+        userId: req.user.userId,
+        createdAt: {
+          lt: today,
+        },
       },
     })
 
-  } catch (error) {
+    const passkey = await createDailyPasskey(req.user.userId)
 
-    if (error.code === 11000) {
-    console.error("Duplicate hash detected:", error.keyValue.hash);
-    // Decide: skip, regenerate new hash, or update existing passkey
-    } else {
-      console.error("Passkey fetch error:", error)
-      res.status(500).json({ message: "Server error fetching passkey" })
+    if (!passkey) {
+      return res.status(404).json({ message: "User not found" })
     }
+
+    res.json({ passkey: buildPasskeyResponse(passkey) })
+  } catch (error) {
+    if (error.code === "P2002") {
+      console.error("Duplicate passkey hash detected:", error.meta?.target)
+      return res.status(400).json({ message: "Unable to generate a unique passkey" })
+    }
+
+    console.error("Passkey fetch error:", error)
+    res.status(500).json({ message: "Server error fetching passkey" })
   }
 })
 
-
-// Validate passkey (for security guards)
 router.post("/validate", authenticate, async (req, res) => {
   try {
     const { hash, location } = req.body
 
-    // Find the passkey
-    const passkey = await Passkey.findOne({ hash, isActive: true }).populate(
-      "userId",
-      "name studentId hostel roomNumber",
-    )
+    if (!hash) {
+      return res.status(400).json({ message: "Passkey hash is required" })
+    }
+
+    const passkey = await prisma.passkey.findFirst({
+      where: {
+        hash,
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          select: userSelect,
+        },
+      },
+    })
 
     if (!passkey) {
       return res.status(400).json({ message: "Invalid or expired passkey" })
     }
 
-    // Check if passkey is still valid (not expired)
-    if (new Date() > passkey.expiresAt) {
-      return res.status(400).json({ message: "Passkey has expired" })
-    }
-
-    // Log the entry/exit
-    const log = new Log({
-      userId: passkey.userId._id,
-      action: "entry_exit",
-      location,
-      timestamp: new Date(),
-      details: `Passkey validated at ${location}`,
+    const updatedPasskey = await prisma.passkey.update({
+      where: { id: passkey.id },
+      data: {
+        isUsed: true,
+      },
     })
-    await log.save()
+
+    await prisma.log.create({
+      data: {
+        id: generateId(),
+        userId: passkey.userId,
+        action: "scan_attempt",
+        location: location || null,
+        guardId: req.user.guardId || null,
+        guardName: req.user.name || null,
+        success: true,
+        details: {
+          message: `Passkey validated at ${location || "unknown location"}`,
+          passkeyId: passkey.id,
+        },
+        scanType: "manual",
+      },
+    })
 
     res.json({
       message: "Passkey validated successfully",
       student: {
-        name: passkey.userId.name,
-        studentId: passkey.userId.studentId,
-        hostel: passkey.userId.hostel,
-        roomNumber: passkey.userId.roomNumber,
+        name: passkey.user.name,
+        studentId: passkey.user.studentId,
+        hostel: passkey.user.hostel,
+        roomNumber: passkey.user.roomNumber,
       },
+      passkey: buildPasskeyResponse(updatedPasskey),
       timestamp: new Date(),
     })
   } catch (error) {
@@ -171,12 +214,15 @@ router.post("/validate", authenticate, async (req, res) => {
   }
 })
 
-// Get passkey history
 router.get("/history", authenticate, async (req, res) => {
   try {
-    const passkeys = await Passkey.find({ userId: req.user.userId }).sort({ createdAt: -1 }).limit(30)
+    const passkeys = await prisma.passkey.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    })
 
-    res.json({ passkeys })
+    res.json({ passkeys: passkeys.map(buildPasskeyResponse) })
   } catch (error) {
     console.error("Passkey history error:", error)
     res.status(500).json({ message: "Server error fetching passkey history" })

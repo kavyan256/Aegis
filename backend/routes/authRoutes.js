@@ -1,39 +1,148 @@
 const express = require("express")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
-const User = require("../models/User")
-const WardenUser = require("../models/WardenUser")
-const GuardUser = require("../models/GuardUser")
-const { authenticate } = require("../middleware/auth");
+const { getPrismaClient } = require("../config/prisma")
+const { authenticate } = require("../middleware/auth")
+const { generateId } = require("../utils/hashGenerator")
+
+const prisma = getPrismaClient()
 const router = express.Router()
+
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  gender: true,
+  department: true,
+  year: true,
+  hostel: true,
+  roomNumber: true,
+  phoneNumber: true,
+  emergencyContact: true,
+  profilePhoto: true,
+  studentId: true,
+  guardId: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+}
+
+const roleValues = new Set(["student", "warden", "security", "admin"])
+const genderValues = new Set(["male", "female", "other"])
+const departmentMap = {
+  it: "IT",
+  it_bi: "IT_BI",
+  electronics: "Electronics",
+}
+const yearMap = {
+  1: "year_1",
+  2: "year_2",
+  3: "year_3",
+  4: "year_4",
+  year1: "year_1",
+  year2: "year_2",
+  year3: "year_3",
+  year4: "year_4",
+  year_1: "year_1",
+  year_2: "year_2",
+  year_3: "year_3",
+  year_4: "year_4",
+}
+
+const serializeUser = (user) => {
+  if (!user) {
+    return null
+  }
+
+  return {
+    id: user.id,
+    _id: user.id,
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    gender: user.gender,
+    department: user.department,
+    year: user.year,
+    hostel: user.hostel,
+    roomNumber: user.roomNumber,
+    phoneNumber: user.phoneNumber,
+    emergencyContact: user.emergencyContact,
+    profilePhoto: user.profilePhoto,
+    studentId: user.studentId,
+    guardId: user.guardId,
+    isActive: user.isActive,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }
+}
+
+const normalizeRole = (value, fallback = "student") => {
+  if (!value) {
+    return fallback
+  }
+
+  const normalized = String(value).trim().toLowerCase()
+  return roleValues.has(normalized) ? normalized : fallback
+}
+
+const normalizeGender = (value) => {
+  if (!value) {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toLowerCase()
+  return genderValues.has(normalized) ? normalized : undefined
+}
+
+const normalizeDepartment = (value) => {
+  if (!value) {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toLowerCase()
+  return departmentMap[normalized] || undefined
+}
+
+const normalizeYear = (value) => {
+  if (!value) {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toLowerCase()
+  return yearMap[normalized] || undefined
+}
+
+const parseRequestedUser = (value) => {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === "object") {
+    return value
+  }
+
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value)
+    } catch (error) {
+      return { id: value }
+    }
+  }
+
+  return null
+}
 
 // Register new user
 router.post("/register", async (req, res) => {
   try {
-    console.log("INCOMING REGISTRATION DATA:", req.body);
-    const { name, email, password, studentId, guardId, wardenId, hostel, roomNumber, phoneNumber, securityPost, emergencyContact, gender, year, department, role} = req.body
-    let user;
-    const hashPassword = await bcrypt.hash(password, 10)
-
-    if(role == "student") {
-       // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { studentId }],
-    })
-
-    if (existingUser) {
-      return res.status(400).json({
-        message: "User with this email or student ID already exists",
-      })
-    }
-
-
-      // Create new user
-    user = new User({
+    const {
       name,
       email,
-      password: hashPassword,
+      password,
       studentId,
+      guardId,
       hostel,
       roomNumber,
       phoneNumber,
@@ -41,161 +150,146 @@ router.post("/register", async (req, res) => {
       gender,
       year,
       department,
-      
-    })
+      role,
+    } = req.body
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email, and password are required" })
     }
-    else if(role == "warden") {
-       // Check if user already exists
-    const existingUser = await WardenUser.findOne({
-      $or: [{ email }, { Id }],
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const normalizedRole = normalizeRole(role)
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          studentId ? { studentId } : null,
+          guardId ? { guardId } : null,
+        ].filter(Boolean),
+      },
     })
 
     if (existingUser) {
-      return res.status(400).json({
-        message: "warden with this email or  ID already exists",
-      })
-    }
-       // Create new user
-      user = new WardenUser({
-      name,
-      email,
-      password: hashPassword,
-      hostel,
-      phoneNumber,
-      
-      gender,
-    })
-    }
-    else {
-       // Create new user
-        // Check if user already exists
-    const existingUser = await GuardUser.findOne({
-      $or: [{ email }],
-    })
-
-    if (existingUser) {
-      return res.status(400).json({
-        message: "Guard with this ID already exists",
-      })
+      return res.status(400).json({ message: "User with this email, student ID, or guard ID already exists" })
     }
 
-      user = new GuardUser({
-      name,
-      email,
-      password: hashPassword,
-      location : securityPost,
-      guardId: guardId,
-      phoneNumber,
-      emergencyContact,
-      
-      gender,
-      
+    const newUser = await prisma.user.create({
+      data: {
+        id: generateId(),
+        name,
+        email,
+        passwordHash,
+        studentId: studentId || undefined,
+        guardId: guardId || undefined,
+        hostel: hostel || undefined,
+        roomNumber: roomNumber || undefined,
+        phoneNumber: phoneNumber || undefined,
+        emergencyContact: emergencyContact || undefined,
+        gender: normalizeGender(gender),
+        year: normalizeYear(year),
+        department: normalizeDepartment(department),
+        role: normalizedRole,
+      },
+      select: userSelect,
     })
-    }
-   
 
-    await user.save()
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE,
-    })
+    const token = jwt.sign(
+      { userId: newUser.id, role: newUser.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRE,
+      },
+    )
 
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        studentId: user.studentId,
-        role: user.role,
-      },
+      user: serializeUser(newUser),
     })
   } catch (error) {
     console.error("Registration error:", error)
+
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "A user with those details already exists" })
+    }
+
     res.status(500).json({ message: "Server error during registration" })
   }
 })
 
-
-
 // Login user
 router.post("/login", async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role } = req.body
 
-    let user;
-    // Check password correctness
-    let passwordMatches = false;
-    // Find user by email depending on role
-    if (role == "student") {
-      user = await User.findOne({ email });
-    } 
-    else if (role == "warden") {
-      user = await WardenUser.findOne({ email });
-    } 
-    else if (role == "security") {
-      user = await GuardUser.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" })
     }
+
+    const normalizedRole = role ? normalizeRole(role, null) : null
+    if (role && !normalizedRole) {
+      return res.status(400).json({ message: "Invalid role" })
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email,
+        ...(normalizedRole ? { role: normalizedRole } : {}),
+      },
+      select: userSelect,
+    })
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials: user not found" });
+      return res.status(400).json({ message: "Invalid credentials: user not found" })
     }
 
-    // Prefer common hashed fields
-    if (user.passwordHash) {
-      passwordMatches = await bcrypt.compare(password, user.passwordHash);
-    } else if (user.password) {
-      try {
-        passwordMatches = await bcrypt.compare(password, user.password);
-        if (!passwordMatches) {
-          passwordMatches = password === user.password;
-        }
-      } catch (err) {
-        passwordMatches = password === user.password;
-      }
-    }
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash)
 
     if (!passwordMatches) {
-      return res.status(400).json({ message: "Invalid credentials: incorrect password" });
+      return res.status(400).json({ message: "Invalid credentials: incorrect password" })
     }
 
-    // Update last login after successful authentication
-    user.lastLogin = new Date();
-    await user.save();
+    const refreshedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isActive: user.isActive,
+      },
+      select: userSelect,
+    })
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE,
-    });
+    const token = jwt.sign(
+      { userId: refreshedUser.id, role: refreshedUser.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRE,
+      },
+    )
 
     res.json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        studentId: user.studentId,
-        guardId: user.guardId,
-        role: user.role,
-        hostel: user.hostel,
-        roomNumber: user.roomNumber,
-      },
-    });
+      user: serializeUser(refreshedUser),
+    })
   } catch (error) {
-    console.error("Login error:", error);1      
-    res.status(500).json({ message: "Server error during login" });
+    console.error("Login error:", error)
+    res.status(500).json({ message: "Server error during login" })
   }
 })
 
 // Get current user profile
 router.get("/profile", authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select("-password")
-    res.json({ user })
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: userSelect,
+    })
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    res.json({ user: serializeUser(user) })
   } catch (error) {
     console.error("Profile fetch error:", error)
     res.status(500).json({ message: "Server error fetching profile" })
@@ -205,43 +299,75 @@ router.get("/profile", authenticate, async (req, res) => {
 // Update user profile
 router.put("/profile", authenticate, async (req, res) => {
   try {
-    const { name, phoneNumber, email, studentId, emergencyContact, hostel, roomNumber, year, department } = req.body
+    const {
+      name,
+      phoneNumber,
+      email,
+      studentId,
+      emergencyContact,
+      hostel,
+      roomNumber,
+      year,
+      department,
+      gender,
+    } = req.body
 
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { name, phoneNumber, email, studentId, emergencyContact, hostel, roomNumber, year, department },
-      { new: true },
-    ).select("-password")
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: {
+        name: name || undefined,
+        phoneNumber: phoneNumber || undefined,
+        email: email || undefined,
+        studentId: studentId || undefined,
+        emergencyContact: emergencyContact || undefined,
+        hostel: hostel || undefined,
+        roomNumber: roomNumber || undefined,
+        year: normalizeYear(year),
+        department: normalizeDepartment(department),
+        gender: normalizeGender(gender),
+      },
+      select: userSelect,
+    })
 
-    res.json({ message: "Profile updated successfully", user })
+    res.json({ message: "Profile updated successfully", user: serializeUser(user) })
   } catch (error) {
     console.error("Profile update error:", error)
+
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "Email, student ID, or guard ID already exists" })
+    }
+
     res.status(500).json({ message: "Server error updating profile" })
   }
 })
 
 router.get("/fetchProfile", async (req, res) => {
   try {
-    let {user} = req.query
-    const role = user.role;
+    const requestedUser = parseRequestedUser(req.query.user)
+    const requestedUserId = requestedUser?.id || req.query.userId || req.query.id
 
-    if (role === "student") {
-      user = await User.findById(user.id).select("-password");
-    } else if (role === "warden") {
-      user = await WardenUser.findById(user.id).select("-password");
-    } else if (role === "security") {
-      user = await GuardUser.findById(user.id).select("-password");
+    if (!requestedUserId) {
+      return res.status(400).json({ message: "User id is required" })
     }
+
+    const user = await prisma.user.findUnique({
+      where: { id: requestedUserId },
+      select: userSelect,
+    })
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
 
-    res.json({ user });
+    if (requestedUser?.role && requestedUser.role !== user.role) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    res.json({ user: serializeUser(user) })
   } catch (error) {
-    console.error("Profile fetch error:", error);
-    res.status(500).json({message: "Server error fetching profile"});
+    console.error("Profile fetch error:", error)
+    res.status(500).json({ message: "Server error fetching profile" })
   }
-});
+})
 
 module.exports = router

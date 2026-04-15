@@ -1,7 +1,7 @@
 const { verifyToken } = require("../config/jwt")
-const User = require("../models/User")
-const GuardUser = require("../models/GuardUser")
-const WardenUser = require("../models/WardenUser")
+const { getPrismaClient } = require("../config/prisma")
+
+const prisma = getPrismaClient()
 
 const authenticate = async (req, res, next) => {
   try {
@@ -13,25 +13,39 @@ const authenticate = async (req, res, next) => {
 
     const decoded = verifyToken(token)
 
-    let user
-    switch (decoded.role) {
-      case "security":
-        user = await GuardUser.findById(decoded.userId).select("-password")
-        break
-      case "warden":
-        user = await WardenUser.findById(decoded.userId).select("-password")
-        break
-      default:
-        user = await User.findById(decoded.userId).select("-password")
-        break
-    }
+    const user = await prisma.user.findUnique({
+      where: {
+        id: decoded.userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        gender: true,
+        department: true,
+        year: true,
+        hostel: true,
+        roomNumber: true,
+        phoneNumber: true,
+        emergencyContact: true,
+        profilePhoto: true,
+        studentId: true,
+        guardId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
 
     if (!user || (typeof user.isActive === "boolean" && !user.isActive)) {
       return res.status(401).json({ message: "Invalid token or user not found." })
     }
 
     req.user = {
-      ...user.toObject(),
+      ...user,
+      _id: user.id,
+      userId: user.id,
       role: decoded.role || user.role,
     }
     next()
