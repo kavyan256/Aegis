@@ -5,7 +5,7 @@ const rateLimit = require("express-rate-limit")
 const cron = require("node-cron")
 require("dotenv").config()
 
-const connectDB = require("./config/db")
+const { connectDatabase, disconnectDatabase, getDatabaseMode } = require("./config/database")
 const { generateDailyPasskeys } = require("./utils/hashGenerator")
 
 // Import routes
@@ -20,9 +20,7 @@ const forgotRoutes = require("./routes/forgotRoute")
 
 const app = express()
 const PORT = process.env.PORT || 5000
-
-// Connect to database
-connectDB()
+const DB_MODE = getDatabaseMode()
 
 // Security middleware
 app.use(helmet())
@@ -74,6 +72,7 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     message: "Aegis ID Backend is running",
+    databaseMode: DB_MODE,
     timestamp: new Date().toISOString(),
   })
 })
@@ -117,9 +116,29 @@ app.all("*", (req, res) => {
 
 
 
-app.listen(PORT, () => {
-  console.log(`🚀 Aegis ID Backend running on port ${PORT}`)
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
-})
+const shutdown = async (signal) => {
+  console.log(`${signal} received. Shutting down server...`)
+  await disconnectDatabase()
+  process.exit(0)
+}
+
+const startServer = async () => {
+  try {
+    const { mode } = await connectDatabase()
+    app.listen(PORT, () => {
+      console.log(`🚀 Aegis ID Backend running on port ${PORT}`)
+      console.log(`🗄️ Database mode: ${mode}`)
+      console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
+    })
+  } catch (error) {
+    console.error("Failed to start server:", error)
+    process.exit(1)
+  }
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"))
+process.on("SIGTERM", () => shutdown("SIGTERM"))
+
+startServer()
 
 module.exports = app
