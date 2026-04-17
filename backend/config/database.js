@@ -15,7 +15,6 @@ const getDatabaseMode = () => {
 
 const connectDatabase = async () => {
   const mode = getDatabaseMode()
-  console.log('[DB DEBUG] DB_MODE:', process.env.DB_MODE, '| Selected mode:', mode)
 
   await connectSQL()
   return { mode }

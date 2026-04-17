@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
 import { commonAPI } from "../services/api"
 import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
+import { AcademicYearList, AcademicYearMap, DepartmentList, DepartmentMap } from "../utils/enumMappings"
 import LoadingSpinner from "../components/LoadingSpinner"
 
 import { Picker } from "@react-native-picker/picker"
@@ -27,9 +28,9 @@ export default function ProfileScreen() {
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const departments = ["IT", "IT BI","Electronics"]
+  const departments = DepartmentList
 
-  const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
+  const years = AcademicYearList
 
   const hostels = ["BH 1", "BH 2", "BH 3", "BH 4", "BH 5", "GH 1", "GH 2", "GH 3"]
 
@@ -166,12 +167,12 @@ export default function ProfileScreen() {
             <>
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>Department</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.department}</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>{DepartmentMap[profile?.department] || profile?.department}</Text>
               </View>
 
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>Year</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.year}</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>{AcademicYearMap[profile?.year] || profile?.year}</Text>
               </View>
 
               <View style={styles.fieldContainer}>
@@ -184,31 +185,31 @@ export default function ProfileScreen() {
               <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
                 <Ionicons name="library-outline" size={20} color={colors.text} style={styles.inputIcon}/> 
                 <Picker
-                  selectedValue={profile.department || "Select Department *"}
+                  selectedValue={profile.department || ""}
                   style={styles.picker}
                   onValueChange={value => updateProfile('department', value)}>
                   <Picker.Item label="Select Department *" value="" />
                   {departments.map(dept => (
-                    <Picker.Item key={dept} label={dept} value={dept} />
+                    <Picker.Item key={dept} label={DepartmentMap[dept] || dept} value={dept} />
                   ))}
                 </Picker>
               </View>
               <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
                 <Ionicons name="calendar-outline" size={20} color={colors.text} style={styles.inputIcon} />
                 <Picker
-                  selectedValue={profile.year || "Select Year *"}
+                  selectedValue={profile.year || ""}
                   style={styles.picker}
                   onValueChange={value => updateProfile('year', value)}>
                   <Picker.Item label="Select Year *" value="" />
                   {years.map(y => (
-                    <Picker.Item key={y} label={y} value={y} />
+                    <Picker.Item key={y} label={AcademicYearMap[y] || y} value={y} />
                   ))}
                 </Picker>
               </View>
               <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
                 <Ionicons name="home-outline" size={20} color={colors.text} style={styles.inputIcon} />
                 <Picker
-                  selectedValue={profile.hostel || "Select Hostel *"}
+                  selectedValue={profile.hostel || ""}
                   style={styles.picker}
                   onValueChange={value => updateProfile('hostel', value)}>
                   <Picker.Item label="Select Hostel *" value="" />

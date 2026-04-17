@@ -6,6 +6,81 @@ Aegis ID is a **mobile-first digital identity and access management system** des
 
 ---
 
+## Quick Start
+
+### 1. Install dependencies
+
+```bash
+cd backend
+npm install
+cd ..
+cd frontend
+npm install
+cd ..
+```
+
+### 2. Configure the backend
+
+Create `backend/.env` using `backend/.env.example` as the template. The backend now uses PostgreSQL with Prisma, so set these values at minimum:
+
+```env
+DB_MODE=sql
+POSTGRES_URL=postgresql://USER:PASSWORD@HOST:5432/DB?schema=public
+JWT_SECRET=your-secret
+JWT_EXPIRE=7d
+PORT=3000
+FRONTEND_URL=http://localhost:8081
+GMAIL_ID=your-email@example.com
+GMAIL_PASSWORD=your-app-password
+```
+
+### 3. Generate Prisma client and apply migrations
+
+```bash
+cd backend
+npm run prisma:generate
+npm run prisma:migrate -- --name init
+cd ..
+```
+
+If you run the app with Docker, the backend container now syncs the Prisma schema automatically on startup so a fresh Postgres volume gets the `users` table before registration runs.
+
+### 4. Start the backend
+
+```bash
+cd backend
+npm run dev
+```
+
+### 5. Start the mobile app
+
+```bash
+cd frontend
+npm start
+```
+
+---
+
+## Docker Workflow
+
+The repo now includes a root `docker-compose.yml` plus separate Dockerfiles for `backend` and `frontend`.
+
+Run the full stack with:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- PostgreSQL on port `5432`
+- Backend on port `3000`
+- Expo web on port `8081`
+
+Expo in Docker is best used for the web target. For native device development, it is usually better to run Expo locally on the host machine and use the backend container separately.
+
+---
+
 ## 🚀 What Our App Does
 
 ### **1. Digital Campus ID (Dynamic Passkey System)**
@@ -111,7 +186,8 @@ Result: Instant **Access Granted / Access Denied** response.
 
 ### **Backend**
 - Node.js / Express  
-- MongoDB  
+- PostgreSQL  
+- Prisma 7  
 - JWT, Bcrypt, SHA-256  
 - Optional Blockchain-based logging
 

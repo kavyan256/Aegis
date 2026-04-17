@@ -28,6 +28,11 @@ const userSelect = {
   updatedAt: true,
 }
 
+const loginUserSelect = {
+  ...userSelect,
+  passwordHash: true,
+}
+
 const roleValues = new Set(["student", "warden", "security", "admin"])
 const genderValues = new Set(["male", "female", "other"])
 const departmentMap = {
@@ -35,19 +40,32 @@ const departmentMap = {
   it_bi: "IT_BI",
   electronics: "Electronics",
 }
+// Maps user input variants to Prisma enum values (uppercase)
 const yearMap = {
-  1: "year_1",
-  2: "year_2",
-  3: "year_3",
-  4: "year_4",
-  year1: "year_1",
-  year2: "year_2",
-  year3: "year_3",
-  year4: "year_4",
-  year_1: "year_1",
-  year_2: "year_2",
-  year_3: "year_3",
-  year_4: "year_4",
+  1: "FIRST_YEAR",
+  2: "SECOND_YEAR",
+  3: "THIRD_YEAR",
+  4: "FOURTH_YEAR",
+  year1: "FIRST_YEAR",
+  year2: "SECOND_YEAR",
+  year3: "THIRD_YEAR",
+  year4: "FOURTH_YEAR",
+  year_1: "FIRST_YEAR",
+  year_2: "SECOND_YEAR",
+  year_3: "THIRD_YEAR",
+  year_4: "FOURTH_YEAR",
+  "1st year": "FIRST_YEAR",
+  "2nd year": "SECOND_YEAR",
+  "3rd year": "THIRD_YEAR",
+  "4th year": "FOURTH_YEAR",
+  first_year: "FIRST_YEAR",
+  second_year: "SECOND_YEAR",
+  third_year: "THIRD_YEAR",
+  fourth_year: "FOURTH_YEAR",
+  FIRST_YEAR: "FIRST_YEAR",
+  SECOND_YEAR: "SECOND_YEAR",
+  THIRD_YEAR: "THIRD_YEAR",
+  FOURTH_YEAR: "FOURTH_YEAR",
 }
 
 const serializeUser = (user) => {
@@ -237,11 +255,15 @@ router.post("/login", async (req, res) => {
         email,
         ...(normalizedRole ? { role: normalizedRole } : {}),
       },
-      select: userSelect,
+      select: loginUserSelect,
     })
 
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials: user not found" })
+    }
+
+    if (!user.passwordHash) {
+      return res.status(400).json({ message: "Account password is missing. Please reset your password." })
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash)

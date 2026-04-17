@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
+import { AcademicYearMap, DepartmentMap } from '../utils/enumMappings';
 
 export default function StudentRegisterCard({ formData, updateFormData, departments, years, hostels, colors }) {
   return (
@@ -37,7 +38,7 @@ export default function StudentRegisterCard({ formData, updateFormData, departme
           onValueChange={value => updateFormData('department', value)}>
           <Picker.Item label="Select Department *" value="" />
           {departments.map(dept => (
-            <Picker.Item key={dept} label={dept} value={dept} />
+            <Picker.Item key={dept} label={DepartmentMap[dept] || dept} value={dept} />
           ))}
         </Picker>
       </View>
@@ -49,7 +50,7 @@ export default function StudentRegisterCard({ formData, updateFormData, departme
           onValueChange={value => updateFormData('year', value)}>
           <Picker.Item label="Select Year *" value="" />
           {years.map(year => (
-            <Picker.Item key={year} label={year} value={year} />
+            <Picker.Item key={year} label={AcademicYearMap[year] || year} value={year} />
           ))}
         </Picker>
       </View>

@@ -1,0 +1,16 @@
+Starting project at C:\Users\Azeem\Desktop\Aegis\frontend
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+Networking has been disabled
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web .\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web .\index.js ░░░░░░░░░░░░░░░░  1.0% (1/1)
+Web .\index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.4% ( 52/147)
+Web .\index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.4% (147/300)
+Web .\index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.4% (294/480)
+Web .\index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.0% (489/628)
+Web .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.9% (663/760)
+Web .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (871/871)
+Web Bundled 26325ms index.js (871 modules)
+ LOG  [web] Logs will appear in the browser console

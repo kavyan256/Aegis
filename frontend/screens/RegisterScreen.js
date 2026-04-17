@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext"
 import { Picker } from "@react-native-picker/picker"
 import { useAuth } from "../context/AuthContext"
 import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
+import { AcademicYearList, AcademicYearReverseMap, DepartmentList, DepartmentReverseMap } from "../utils/enumMappings"
 import StudentRegisterCard from "../components/StudentRegisterCard";
 import WardenRegisterCard from "../components/WardenRegisterCard";
 import SecurityRegisterCard from "../components/SecurityRegisterCard";
@@ -39,10 +40,9 @@ export default function RegisterScreen({ navigation }) {
     email: "23abdulazeem23@gmail.com",
     password: "123456",
     confirmPassword: "123456",
-    // Id: "iit2024243",
     department: "IT",
     role: "student",
-    year: "2nd Year",
+    year: "SECOND_YEAR",
     hostel: "BH 3",
     roomNumber: "818",
     phone: "9876543210",
@@ -58,9 +58,9 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
 
-  const departments = ["IT", "IT BI","Electronics"]
+  const departments = DepartmentList
 
-  const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
+  const years = AcademicYearList
 
   const hostels = ["BH 1", "BH 2", "BH 3", "BH 4", "BH 5", "GH 1", "GH 2", "GH 3"]
   
@@ -101,10 +101,11 @@ export default function RegisterScreen({ navigation }) {
     if (!validateForm()) return
 
     setLoading(true)
-    // Map phone to phoneNumber for backend
+    // Map phone to phoneNumber and convert display values to enum values for backend
     const payload = {
       ...formData,
       phoneNumber: formData.phone,
+      // Note: year is already stored as enum value (SECOND_YEAR, etc.)
     }
     delete payload.phone
     const result = await register(payload)

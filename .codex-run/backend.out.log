@@ -1,0 +1,7 @@
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Route: /api/health
+SQL Connected: PostgreSQL via Prisma 7+
+🚀 Aegis ID Backend running on port 3000
+🗄️ Database mode: sql
+📊 Health check: http://localhost:3000/api/health
