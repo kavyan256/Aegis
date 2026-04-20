@@ -17,7 +17,7 @@ import { CameraView, useCameraPermissions } from "expo-camera"
 import { securityAPI } from "../services/api"
 import SafeJourneyCard from "../components/SafeJourneyCard"
 import WelcomeBackCard from "../components/WelcomeBackCard"
-import { MATTE_COLORS, LAYOUT, SPACING } from "../utils/theme"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
 
 export default function ScannerScreen({ navigation }) {
   const { isDarkMode, toggleTheme } = useTheme()
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: LAYOUT.screenPaddingHorizontal,
-    paddingVertical: SPACING.md,
+    paddingVertical: LAYOUT.spacingSm,
   },
   headerTitle: {
     fontSize: 18,
@@ -177,36 +177,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: SPACING.lg,
+    gap: 16,
   },
   permissionText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: MATTE_COLORS.textPrimary,
   },
   permissionButton: {
     backgroundColor: MATTE_COLORS.accentPrimary,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   permissionButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: MATTE_COLORS.darkBg,
   },
   cameraContainer: {
     flex: 1,
-    margin: SPACING.lg,
-    borderRadius: 20,
+    margin: LAYOUT.spacingMd,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: MATTE_COLORS.accentPrimary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
   },
   camera: {
     flex: 1,
@@ -220,32 +215,32 @@ const styles = StyleSheet.create({
     transform: [{ translateX: '-35%' }, { translateY: '-35%' }],
     borderWidth: 3,
     borderColor: MATTE_COLORS.accentPrimary,
-    borderRadius: 24,
-    opacity: 0.8,
+    borderRadius: 20,
+    opacity: 0.7,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   rescanContainer: {
     paddingHorizontal: LAYOUT.screenPaddingHorizontal,
-    paddingVertical: SPACING.lg,
+    paddingVertical: LAYOUT.spacingMd,
   },
   rescanButton: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: MATTE_COLORS.cardBg,
-    paddingVertical: SPACING.md,
-    borderRadius: 14,
+    backgroundColor: MATTE_COLORS.inputBg,
+    paddingVertical: LAYOUT.spacingMd,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: MATTE_COLORS.accentPrimary,
-    gap: SPACING.sm,
+    borderColor: MATTE_COLORS.borderColor,
+    gap: 8,
   },
   rescanText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: MATTE_COLORS.textPrimary,
   },
