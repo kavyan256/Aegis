@@ -2,7 +2,7 @@
 
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
 import { useMemo } from "react"
-import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
+import { MATTE_COLORS, SPACING } from "../utils/theme"
 
 export default function FilterTabs({ options, activeFilter, onFilterChange }) {
   const totalWidth = useMemo(() => options.length * 120, [options.length])
@@ -38,9 +38,9 @@ export default function FilterTabs({ options, activeFilter, onFilterChange }) {
 const styles = StyleSheet.create({
   container: {
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
+    backgroundColor: MATTE_COLORS.cardBg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
+    borderBottomColor: MATTE_COLORS.borderColor,
   },
   scrollContent: {
     paddingHorizontal: SPACING.lg,
@@ -52,22 +52,22 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     marginRight: SPACING.sm,
     borderRadius: 20,
-    backgroundColor: COLORS.gray[100],
+    backgroundColor: MATTE_COLORS.inputBg,
   },
   activeTab: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: MATTE_COLORS.accentPrimary,
   },
   tabText: {
-    fontSize: SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.gray[600],
+    fontSize: 14,
+    fontWeight: '400',
+    color: MATTE_COLORS.textSecondary,
   },
   activeTabText: {
-    color: COLORS.white,
-    fontFamily: FONTS.bold,
+    color: MATTE_COLORS.textPrimary,
+    fontWeight: 'bold',
   },
   badge: {
-    backgroundColor: COLORS.gray[300],
+    backgroundColor: MATTE_COLORS.borderColor,
     paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
     borderRadius: 10,
@@ -76,14 +76,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   activeBadge: {
-    backgroundColor: COLORS.white + "30",
+    backgroundColor: MATTE_COLORS.textPrimary + "30",
   },
   badgeText: {
-    fontSize: SIZES.xs,
-    fontFamily: FONTS.bold,
-    color: COLORS.gray[700],
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: MATTE_COLORS.textSecondary,
   },
   activeBadgeText: {
-    color: COLORS.white,
+    color: MATTE_COLORS.textPrimary,
   },
 })

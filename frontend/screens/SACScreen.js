@@ -3,10 +3,10 @@ import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Platform, Statu
 import { Ionicons } from '@expo/vector-icons';
 import RoomCard from '../components/RoomCard';
 import { useTheme } from '../context/ThemeContext';
-import { COLORS, FONTS, SIZES, SPACING } from '../utils/constants';
+import { MATTE_COLORS, LAYOUT } from '../utils/theme';
 
 export default function SAC({ navigation }) {
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const rooms = [
     { name: 'Snooker Room', occupied: true, leaveTime: '7:30 PM' },
@@ -19,7 +19,7 @@ export default function SAC({ navigation }) {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: MATTE_COLORS.darkBg,
         paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 8 : 0,
       }}
     >
@@ -29,35 +29,35 @@ export default function SAC({ navigation }) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: SPACING.lg,
-          marginBottom: SPACING.lg,
-          marginTop: SPACING.sm,
+          paddingHorizontal: LAYOUT.spacing.lg,
+          marginBottom: LAYOUT.spacing.lg,
+          marginTop: LAYOUT.spacing.sm,
         }}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={MATTE_COLORS.textPrimary} />
         </TouchableOpacity>
 
         <Text
           style={{
-            fontSize: SIZES.lg,
-            fontFamily: FONTS.bold,
-            color: colors.text,
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: MATTE_COLORS.textPrimary,
           }}
         >
           SAC Rooms
         </Text>
 
         <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
-          <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={colors.text} />
+          <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={MATTE_COLORS.accentPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* Rooms List */}
       <ScrollView
         contentContainerStyle={{
-          paddingHorizontal: SPACING.lg,
-          paddingBottom: SPACING.xl,
+          paddingHorizontal: LAYOUT.spacing.lg,
+          paddingBottom: LAYOUT.spacing.xl,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -65,10 +65,10 @@ export default function SAC({ navigation }) {
           <View
             key={idx}
             style={{
-              backgroundColor: colors.card,
+              backgroundColor: MATTE_COLORS.cardBg,
               borderRadius: 16,
-              padding: SPACING.lg,
-              marginBottom: SPACING.md,
+              padding: LAYOUT.spacing.lg,
+              marginBottom: LAYOUT.spacing.md,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
@@ -79,9 +79,9 @@ export default function SAC({ navigation }) {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text
                 style={{
-                  fontSize: SIZES.md,
-                  fontFamily: FONTS.bold,
-                  color: colors.text,
+                  fontSize: 16,
+                  fontWeight: 'bold',
+                  color: MATTE_COLORS.textPrimary,
                 }}
               >
                 {room.name}
@@ -90,7 +90,7 @@ export default function SAC({ navigation }) {
               {room.occupied ? (
                 <View
                   style={{
-                    backgroundColor: isDarkMode ? '#f4433630' : '#ffebee',
+                    backgroundColor: '#f4433630',
                     borderRadius: 12,
                     paddingVertical: 4,
                     paddingHorizontal: 10,
@@ -100,7 +100,7 @@ export default function SAC({ navigation }) {
                     style={{
                       fontSize: 12,
                       color: '#f44336',
-                      fontFamily: FONTS.medium,
+                      fontWeight: '500',
                     }}
                   >
                     Occupied
@@ -109,7 +109,7 @@ export default function SAC({ navigation }) {
               ) : (
                 <View
                   style={{
-                    backgroundColor: isDarkMode ? '#4caf5030' : '#e8f5e9',
+                    backgroundColor: '#4caf5030',
                     borderRadius: 12,
                     paddingVertical: 4,
                     paddingHorizontal: 10,
@@ -119,7 +119,7 @@ export default function SAC({ navigation }) {
                     style={{
                       fontSize: 12,
                       color: '#4caf50',
-                      fontFamily: FONTS.medium,
+                      fontWeight: '500',
                     }}
                   >
                     Available
@@ -133,11 +133,10 @@ export default function SAC({ navigation }) {
                 style={{
                   marginTop: 6,
                   fontSize: 13,
-                  fontFamily: FONTS.regular,
-                  color: colors.subText,
+                  color: MATTE_COLORS.textSecondary,
                 }}
               >
-                Expected to be free by <Text style={{ fontFamily: FONTS.bold }}>{room.leaveTime}</Text>
+                Expected to be free by <Text style={{ fontWeight: 'bold' }}>{room.leaveTime}</Text>
               </Text>
             )}
           </View>

@@ -23,14 +23,26 @@ import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
 import LoadingSpinner from "../components/LoadingSpinner"
 import api from "../services/api"
 
+const MATTE_COLORS = {
+  darkBg: "#0F1419",
+  cardBg: "#1A1F2B",
+  inputBg: "#252D3D",
+  accentPrimary: "#6366F1",
+  accentSecondary: "#EC4899",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#94A3B8",
+  borderColor: "#334155",
+}
+
 export default function LoginScreen({ navigation }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme()
+  const { isDarkMode, toggleTheme } = useTheme()
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("student")
   const [password, setPassword] = useState("123456")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
+  const [focusedInput, setFocusedInput] = useState(null)
 
   const [forgotModalVisible, setForgotModalVisible] = useState(false)
   const [forgotEmail, setForgotEmail] = useState("")
@@ -77,22 +89,17 @@ export default function LoginScreen({ navigation }) {
   if (loading) return <LoadingSpinner />
 
   return (
-    <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: MATTE_COLORS.darkBg }]}>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[styles.container, { backgroundColor: MATTE_COLORS.darkBg }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {/* Floating Theme Toggle */}
         <TouchableOpacity
           onPress={toggleTheme}
-          style={[
-            styles.themeButton,
-            {
-              backgroundColor: colors.card + "99",
-            },
-          ]}
+          style={styles.themeButton}
         >
-          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={colors.text} />
+          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={26} color={MATTE_COLORS.accentPrimary} />
         </TouchableOpacity>
 
         <ScrollView
@@ -102,91 +109,98 @@ export default function LoginScreen({ navigation }) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Aegis ID</Text>
-            <Text style={[styles.subtitle, { color: colors.text }]}>Digital Campus Pass</Text>
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark" size={48} color={MATTE_COLORS.accentPrimary} />
+            </View>
+            <Text style={styles.title}>Aegis ID</Text>
+            <Text style={styles.subtitle}>Secure Campus Access</Text>
           </View>
 
           {/* Role Picker */}
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}>
-            <Ionicons name="person-outline" size={20} color={colors.text} style={styles.inputIcon} />
+          <View style={[styles.rolePickerContainer, { borderColor: focusedInput === "role" ? MATTE_COLORS.accentPrimary : MATTE_COLORS.borderColor }]}>
+            <Ionicons name="person" size={20} color={MATTE_COLORS.accentPrimary} style={styles.roleIcon} />
             <Picker
               selectedValue={role}
-              style={[styles.input, { color: colors.text, flex: 1 }]}
+              style={styles.picker}
               onValueChange={(itemValue) => setRole(itemValue)}
-              dropdownIconColor={colors.text}
+              dropdownIconColor={MATTE_COLORS.textSecondary}
+              onFocus={() => setFocusedInput("role")}
+              onBlur={() => setFocusedInput(null)}
             >
-              <Picker.Item label="Student" value="student" />
-              <Picker.Item label="Warden" value="warden" />
-              <Picker.Item label="Security" value="security" />
+              <Picker.Item label="👨‍🎓 Student" value="student" />
+              <Picker.Item label="👨‍💼 Warden" value="warden" />
+              <Picker.Item label="👮 Security" value="security" />
             </Picker>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
-            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}>
-              <Ionicons name="mail-outline" size={20} color={colors.text} style={styles.inputIcon} />
+            {/* Email Input */}
+            <View style={[styles.inputContainer, { borderColor: focusedInput === "email" ? MATTE_COLORS.accentPrimary : MATTE_COLORS.borderColor }]}>
+              <Ionicons name="mail" size={20} color={focusedInput === "email" ? MATTE_COLORS.accentPrimary : MATTE_COLORS.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={styles.input}
                 placeholder="Email Address"
-                placeholderTextColor={colors.text}
+                placeholderTextColor={MATTE_COLORS.textSecondary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                onFocus={() => setFocusedInput("email")}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
-            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}>
-              <Ionicons name="lock-closed-outline" size={20} color={colors.text} style={styles.inputIcon} />
+            {/* Password Input */}
+            <View style={[styles.inputContainer, { borderColor: focusedInput === "password" ? MATTE_COLORS.accentPrimary : MATTE_COLORS.borderColor }]}>
+              <Ionicons name="lock-closed" size={20} color={focusedInput === "password" ? MATTE_COLORS.accentPrimary : MATTE_COLORS.textSecondary} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={styles.input}
                 placeholder="Password"
-                placeholderTextColor={colors.text}
+                placeholderTextColor={MATTE_COLORS.textSecondary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoComplete="password"
+                onFocus={() => setFocusedInput("password")}
+                onBlur={() => setFocusedInput(null)}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.text} />
+                <Ionicons name={showPassword ? "eye" : "eye-off"} size={20} color={MATTE_COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.loginButton, { backgroundColor: isDarkMode ? "#2196f3" : "#2196f3" }]}
-              onPress={handleLogin}
-            >
-              <Text style={[styles.loginButtonText, { color: colors.text }]}>Sign In</Text>
+            {/* Login Button */}
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              <Text style={styles.loginButtonText}>SIGN IN</Text>
+              <Ionicons name="arrow-forward" size={20} color={MATTE_COLORS.textPrimary} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
 
+            {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPassword} onPress={openForgotModal}>
-              <Text style={[styles.forgotPasswordText, { color: colors.text }]}>Forgot Password?</Text>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
           {/* Forgot Password Modal */}
           <Modal
             visible={forgotModalVisible}
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             onRequestClose={() => setForgotModalVisible(false)}
             onShow={() => setTimeout(() => forgotInputRef.current?.focus?.(), 100)}
           >
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "rgba(0,0,0,0.5)",
-              }}
+              style={styles.modalOverlay}
             >
-              <View style={{ width: "90%", backgroundColor: colors.card, borderRadius: 12, padding: 16 }}>
-                <Text style={{ fontSize: 18, fontFamily: FONTS.bold, color: colors.text, marginBottom: 8 }}>
-                  Reset Password
-                </Text>
-                <Text style={{ color: colors.text, marginBottom: 12 }}>Enter Email to receive new password.</Text>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Ionicons name="key" size={32} color={MATTE_COLORS.accentSecondary} />
+                </View>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                <Text style={styles.modalDescription}>We'll send a reset link to your email address</Text>
 
                 <TextInput
                   ref={forgotInputRef}
@@ -194,24 +208,18 @@ export default function LoginScreen({ navigation }) {
                   value={forgotEmail}
                   onChangeText={setForgotEmail}
                   placeholder="Email Address"
-                  placeholderTextColor={colors.text}
-                  style={{
-                    backgroundColor: "white",
-                    color: "black",
-                    height: 44,
-                    borderRadius: 8,
-                    paddingHorizontal: 10,
-                  }}
+                  placeholderTextColor={MATTE_COLORS.textSecondary}
+                  style={styles.modalInput}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
 
-                <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-                  <TouchableOpacity onPress={() => setForgotModalVisible(false)} style={{ padding: 10, marginRight: 8 }}>
-                    <Text style={{ color: colors.text }}>Cancel</Text>
+                <View style={styles.modalButtonContainer}>
+                  <TouchableOpacity onPress={() => setForgotModalVisible(false)} style={styles.modalCancelButton}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={sendForgotEmail} style={{ padding: 10 }}>
-                    <Text style={{ color: colors.text }}>{sendingForgot ? "Sending..." : "Send"}</Text>
+                  <TouchableOpacity onPress={sendForgotEmail} style={styles.modalSendButton}>
+                    <Text style={styles.modalSendText}>{sendingForgot ? "Sending..." : "Send Reset Link"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -220,9 +228,9 @@ export default function LoginScreen({ navigation }) {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.text }]}>Don't have an account? </Text>
+            <Text style={styles.footerText}>New to Aegis? </Text>
             <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={[styles.signUpText, { color: colors.text }]}>Sign Up</Text>
+              <Text style={styles.signUpText}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -234,7 +242,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 8 : 0,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
@@ -242,73 +250,214 @@ const styles = StyleSheet.create({
   },
   themeButton: {
     position: "absolute",
-    top: -10,
+    top: 16,
     right: 16,
     zIndex: 100,
-    padding: 1,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: MATTE_COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.borderColor,
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: SPACING.lg,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   header: {
     alignItems: "center",
-    marginBottom: SPACING.xxl,
+    marginBottom: 48,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: MATTE_COLORS.cardBg,
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.accentPrimary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   title: {
-    fontSize: SIZES.xxxl,
+    fontSize: 36,
     fontFamily: FONTS.bold,
-    color: COLORS.primary,
-    marginBottom: SPACING.xs,
+    color: MATTE_COLORS.textPrimary,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: SIZES.md,
+    fontSize: 14,
     fontFamily: FONTS.regular,
-    color: COLORS.gray[600],
+    color: MATTE_COLORS.textSecondary,
+    letterSpacing: 0.3,
   },
-  form: { marginBottom: SPACING.xl },
+  rolePickerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.borderColor,
+    height: 56,
+  },
+  roleIcon: {
+    marginRight: 12,
+  },
+  picker: {
+    flex: 1,
+    height: 56,
+    color: MATTE_COLORS.textPrimary,
+  },
+  form: {
+    marginBottom: 32,
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.gray[200],
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.borderColor,
+    height: 56,
   },
-  inputIcon: { marginRight: SPACING.sm },
   input: {
     flex: 1,
-    height: 50,
-    fontSize: SIZES.md,
+    marginLeft: 12,
+    fontSize: 16,
     fontFamily: FONTS.regular,
-    color: COLORS.gray[800],
+    color: MATTE_COLORS.textPrimary,
   },
-  eyeIcon: { padding: SPACING.xs },
+  eyeIcon: {
+    padding: 8,
+  },
   loginButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    height: 50,
+    backgroundColor: MATTE_COLORS.accentPrimary,
+    borderRadius: 14,
+    height: 56,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: SPACING.md,
+    marginTop: 24,
+    flexDirection: "row",
+    shadowColor: MATTE_COLORS.accentPrimary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
   loginButtonText: {
-    color: COLORS.white,
-    fontSize: SIZES.lg,
+    color: MATTE_COLORS.textPrimary,
+    fontSize: 16,
     fontFamily: FONTS.bold,
+    letterSpacing: 1,
   },
-  forgotPassword: { alignItems: "center", marginTop: SPACING.md },
-  forgotPasswordText: { fontSize: SIZES.sm },
+  forgotPassword: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: MATTE_COLORS.accentSecondary,
+    fontFamily: FONTS.semibold,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: SPACING.lg,
+    marginTop: 32,
   },
-  footerText: { fontSize: SIZES.md },
-  signUpText: { fontSize: SIZES.md },
+  footerText: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    color: MATTE_COLORS.textSecondary,
+  },
+  signUpText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: MATTE_COLORS.accentPrimary,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
+  modalContent: {
+    width: "90%",
+    backgroundColor: MATTE_COLORS.cardBg,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.borderColor,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: FONTS.bold,
+    color: MATTE_COLORS.textPrimary,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: MATTE_COLORS.textSecondary,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalInput: {
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.borderColor,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: MATTE_COLORS.textPrimary,
+    fontSize: 16,
+    fontFamily: FONTS.regular,
+    marginBottom: 24,
+  },
+  modalButtonContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.borderColor,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: MATTE_COLORS.textSecondary,
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+  },
+  modalSendButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: MATTE_COLORS.accentSecondary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalSendText: {
+    color: MATTE_COLORS.textPrimary,
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+  },
 })

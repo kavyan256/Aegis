@@ -5,57 +5,71 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from "react-native"
 import { useState } from "react"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "../context/ThemeContext"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { outpass } from "../services/api"
-import {useAuth} from "../context/AuthContext"
-import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
+import { useAuth } from "../context/AuthContext"
+import FormInput from "../components/FormInput"
+import PrimaryButton from "../components/PrimaryButton"
+import ScreenHeader from "../components/ScreenHeader"
 import LoadingSpinner from "../components/LoadingSpinner"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
 
-import styles from "../styles/CreateOutpassStyles"
+const formatDate = (date) => {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
+const formatTime = (date) => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
 
 export default function CreateOutpassScreen({ navigation }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme();
-  const { user, logout } = useAuth()
+  const { isDarkMode, toggleTheme } = useTheme()
+  const { user } = useAuth()
+  const [focusedInput, setFocusedInput] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(null)
+
   const [formData, setFormData] = useState({
-    purpose: "Going out",
-    destination: "Cafe",
+    purpose: "",
+    destination: "",
     fromDate: new Date(),
     fromTime: new Date(),
     toDate: new Date(),
     toTime: new Date(),
-    // fromDate: new Date("2025-08-01"),          // 1st Aug 2025
-    // fromTime: new Date("2025-08-01T09:30:00"), // 9:30 AM
-    // toDate: new Date("2025-08-05"),            // 5th Aug 2025
-    // toTime: new Date("2025-08-05T18:00:00"),
-    emergencyName: "Abdul",
-    emergencyContact: "8909627048",
-    remarks: "Nothing",
+    emergencyName: "",
+    emergencyContact: "",
+    remarks: "",
   })
-  const [showDatePicker, setShowDatePicker] = useState(null)
-  const [loading, setLoading] = useState(false)
 
-  const updateFormData = (key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }))
+  const updateField = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }))
   }
 
   const handleDateChange = (event, selectedDate, field) => {
     setShowDatePicker(null)
     if (selectedDate) {
-      updateFormData(field, selectedDate)
+      updateField(field, selectedDate)
     }
   }
 
   const validateForm = () => {
-    const { purpose, destination, fromDate, toDate, emergencyContact } = formData
+    const { purpose, destination, emergencyContact } = formData
 
     if (!purpose.trim()) {
       Alert.alert("Error", "Please enter the purpose of outpass")
@@ -84,146 +98,138 @@ export default function CreateOutpassScreen({ navigation }) {
       Alert.alert("Success", "Outpass request submitted successfully", [
         { text: "OK", onPress: () => navigation.goBack() },
       ])
-    } 
-    catch (error) {
-      Alert.alert("Error Screen", error.response?.data?.message || "Failed to create outpass")
+    } catch (error) {
+      Alert.alert("Error", error.response?.data?.message || "Failed to create outpass")
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  if (loading) {
-    return <LoadingSpinner />
-  }
+  if (loading) return <LoadingSpinner />
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <View style={[styles.header, { backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}> 
-        
-        <TouchableOpacity style={{ padding: 8 }} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-
-        <Text style={[styles.headerTitle, { color: colors.text, flex: 1, textAlign: 'center' }]}>Create Outpass</Text>
-        
-        <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
-          <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={colors.text} />
-        </TouchableOpacity>
-
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.form}>
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-            <Text style={[styles.label, { color: colors.text }]}>Purpose *</Text>
-            <TextInput
-              style={[styles.input, { color: colors.subText }]}
-              placeholder="e.g., Medical appointment, Family visit"
-              placeholderTextColor={colors.subText}
-              value={formData.purpose}
-              onChangeText={(value) => updateFormData("purpose", value)}
-              multiline
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-            <Text style={[styles.label, { color: colors.text }]}>Destination *</Text>
-            <TextInput
-              style={[styles.input, { color: colors.subText }]}
-              placeholder="e.g., City Hospital, Home"
-              placeholderTextColor={colors.subText}
-              value={formData.destination}
-              onChangeText={(value) => updateFormData("destination", value)}
-            />
-          </View>
-
-          <View style={styles.dateTimeContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Departure</Text>
-            <View style={styles.dateTimeRow}>
-              <TouchableOpacity style={[styles.dateTimeButton, { backgroundColor: colors.card, borderColor: colors.text }]} onPress={() => setShowDatePicker("fromDate")}> 
-                <Ionicons name="calendar-outline" size={20} color={colors.text} />
-                <Text style={[styles.dateTimeText, { color: colors.text }]}>{formatDate(formData.fromDate)}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.dateTimeButton, { backgroundColor: colors.card, borderColor: colors.text }]} onPress={() => setShowDatePicker("fromTime")}> 
-                <Ionicons name="time-outline" size={20} color={colors.text} />
-                <Text style={[styles.dateTimeText, { color: colors.text }]}>{formatTime(formData.fromTime)}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.dateTimeContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Return</Text>
-            <View style={styles.dateTimeRow}>
-              <TouchableOpacity style={[styles.dateTimeButton, { backgroundColor: colors.card, borderColor: colors.text }]} onPress={() => setShowDatePicker("toDate")}> 
-                <Ionicons name="calendar-outline" size={20} color={colors.text} />
-                <Text style={[styles.dateTimeText, { color: colors.text }]}>{formatDate(formData.toDate)}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.dateTimeButton, { backgroundColor: colors.card, borderColor: colors.text }]} onPress={() => setShowDatePicker("toTime")}> 
-                <Ionicons name="time-outline" size={20} color={colors.text} />
-                <Text style={[styles.dateTimeText, { color: colors.text }]}>{formatTime(formData.toTime)}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-            <Text style={[styles.label, { color: colors.text }]}>Emergency Name *</Text>
-            <TextInput
-              style={[styles.input, { color: colors.subText }]}
-              placeholder="Person to contact in emergency"
-              placeholderTextColor={colors.subText}
-              value={formData.emergencyName}
-              onChangeText={(value) => updateFormData("emergencyName", value)}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-            <Text style={[styles.label, { color: colors.text }]}>Emergency Contact *</Text>
-            <TextInput
-              style={[styles.input, { color: colors.subText }]}
-              placeholder="Phone number to contact in emergency"
-              placeholderTextColor={colors.subText}
-              value={formData.emergencyContact}
-              onChangeText={(value) => updateFormData("emergencyContact", value)}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-            <Text style={[styles.label, { color: colors.text }]}>Additional Remarks</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { color: colors.subText }]}
-              placeholder="Any additional information..."
-              placeholderTextColor={colors.subText}
-              value={formData.remarks}
-              onChangeText={(value) => updateFormData("remarks", value)}
-              multiline
-              numberOfLines={2}
-            />
-          </View>
-
-          <TouchableOpacity style={[styles.submitButton, { backgroundColor: isDarkMode ? '#2196f3' : '#2196f3' }]} onPress={handleSubmit}>
-            <Text style={[styles.submitButtonText, { color: colors.text }]}>Submit Request</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MATTE_COLORS.darkBg }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={MATTE_COLORS.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleTheme}>
+            <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={MATTE_COLORS.accentPrimary} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
+
+        <ScrollView contentContainerStyle={{ paddingHorizontal: LAYOUT.screenPaddingHorizontal, paddingVertical: 20 }}>
+          <ScreenHeader
+            title="Create Outpass"
+            subtitle="Plan your trip"
+            showIcon={false}
+          />
+
+          {/* Purpose & Destination */}
+          <FormInput
+            icon="clipboard"
+            placeholder="Purpose (e.g., Medical, Family visit)"
+            value={formData.purpose}
+            onChangeText={v => updateField('purpose', v)}
+            isFocused={focusedInput === 'purpose'}
+            onFocus={() => setFocusedInput('purpose')}
+            onBlur={() => setFocusedInput(null)}
+            multiline
+          />
+
+          <FormInput
+            icon="location"
+            placeholder="Destination"
+            value={formData.destination}
+            onChangeText={v => updateField('destination', v)}
+            isFocused={focusedInput === 'destination'}
+            onFocus={() => setFocusedInput('destination')}
+            onBlur={() => setFocusedInput(null)}
+          />
+
+          {/* Departure */}
+          <Text style={styles.sectionTitle}>Departure</Text>
+          <View style={styles.dateTimeRow}>
+            <TouchableOpacity
+              style={[styles.dateTimeButton, { flex: 1, marginRight: 8 }]}
+              onPress={() => setShowDatePicker("fromDate")}
+            >
+              <Ionicons name="calendar-outline" size={20} color={MATTE_COLORS.accentPrimary} />
+              <Text style={styles.dateTimeText}>{formatDate(formData.fromDate)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.dateTimeButton, { flex: 1 }]}
+              onPress={() => setShowDatePicker("fromTime")}
+            >
+              <Ionicons name="time-outline" size={20} color={MATTE_COLORS.accentPrimary} />
+              <Text style={styles.dateTimeText}>{formatTime(formData.fromTime)}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Return */}
+          <Text style={styles.sectionTitle}>Return</Text>
+          <View style={styles.dateTimeRow}>
+            <TouchableOpacity
+              style={[styles.dateTimeButton, { flex: 1, marginRight: 8 }]}
+              onPress={() => setShowDatePicker("toDate")}
+            >
+              <Ionicons name="calendar-outline" size={20} color={MATTE_COLORS.accentPrimary} />
+              <Text style={styles.dateTimeText}>{formatDate(formData.toDate)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.dateTimeButton, { flex: 1 }]}
+              onPress={() => setShowDatePicker("toTime")}
+            >
+              <Ionicons name="time-outline" size={20} color={MATTE_COLORS.accentPrimary} />
+              <Text style={styles.dateTimeText}>{formatTime(formData.toTime)}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Emergency Contact */}
+          <Text style={[styles.sectionTitle, { marginTop: LAYOUT.spacingMd }]}>Emergency Contact</Text>
+
+          <FormInput
+            icon="person"
+            placeholder="Name of person to contact"
+            value={formData.emergencyName}
+            onChangeText={v => updateField('emergencyName', v)}
+            isFocused={focusedInput === 'emergencyName'}
+            onFocus={() => setFocusedInput('emergencyName')}
+            onBlur={() => setFocusedInput(null)}
+          />
+
+          <FormInput
+            icon="call"
+            placeholder="Emergency Contact Number"
+            value={formData.emergencyContact}
+            onChangeText={v => updateField('emergencyContact', v)}
+            keyboardType="phone-pad"
+            isFocused={focusedInput === 'emergencyContact'}
+            onFocus={() => setFocusedInput('emergencyContact')}
+            onBlur={() => setFocusedInput(null)}
+          />
+
+          <FormInput
+            icon="document-text"
+            placeholder="Additional Remarks (optional)"
+            value={formData.remarks}
+            onChangeText={v => updateField('remarks', v)}
+            isFocused={focusedInput === 'remarks'}
+            onFocus={() => setFocusedInput('remarks')}
+            onBlur={() => setFocusedInput(null)}
+            multiline
+          />
+
+          <PrimaryButton label="SUBMIT REQUEST" onPress={handleSubmit} icon="arrow-forward" />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {showDatePicker && (
         <DateTimePicker
@@ -234,6 +240,46 @@ export default function CreateOutpassScreen({ navigation }) {
           minimumDate={new Date()}
         />
       )}
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    paddingTop: 12,
+    paddingBottom: LAYOUT.spacingSm,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: MATTE_COLORS.textPrimary,
+    marginBottom: LAYOUT.spacingSm,
+    marginTop: LAYOUT.spacingMd,
+    letterSpacing: 0.3,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    marginBottom: LAYOUT.spacingMd,
+  },
+  dateTimeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    height: LAYOUT.inputHeight,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.borderColor,
+    marginHorizontal: 4,
+  },
+  dateTimeText: {
+    fontSize: 14,
+    color: MATTE_COLORS.textPrimary,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+})

@@ -1,67 +1,53 @@
 "use client"
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, SafeAreaView } from "react-native"
 import { useState, useEffect } from "react"
 import { useTheme } from "../context/ThemeContext"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
-import styles from "../styles/DashboardStyles"
-
 import QRCode from "react-native-qrcode-svg"
-import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
-
-import { Picker } from "@react-native-picker/picker"
-import AllLocations from "../constants/SecuityLocations.json"
-
 import api from "../services/api"
 import LoadingSpinner from "../components/LoadingSpinner"
-import PasskeyCard from "../components/PasskeyCard"
+import FormPicker from "../components/FormPicker"
+import ScreenHeader from "../components/ScreenHeader"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
+import AllLocations from "../constants/SecuityLocations.json"
 
-export default function GuardDashboardScreen({ navigation }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme();
+export default function GuardScreen({ navigation }) {
+  const { isDarkMode, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
-
   const [profile, setProfile] = useState(null)
-  const [loc, setLoc] = useState("")
+  const [location, setLocation] = useState("")
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  
+  const [focusedInput, setFocusedInput] = useState(null)
+
   useEffect(() => {
     loadDashboardData()
   }, [])
-  
-  // Ensure a default location is selected (use profile.location if available,
-  // otherwise fall back to the first entry in AllLocations)
+
   useEffect(() => {
-    if (!loc) {
-      if (profile?.location) {
-        setLoc(profile.location)
-      } else if (Array.isArray(AllLocations?.Locations) && AllLocations.Locations.length > 0) {
-        setLoc(AllLocations.Locations[0])
-      }
+    if (!location && profile?.location) {
+      setLocation(profile.location)
+    } else if (!location && AllLocations?.Locations?.length > 0) {
+      setLocation(AllLocations.Locations[0])
     }
-  }, [profile, loc])
-  
+  }, [profile, location])
+
   const loadDashboardData = async () => {
     try {
       const res = await api.get("/auth/fetchProfile", {
         headers: { Authorization: `Bearer ${user.token}` },
-        params: { 
-          user : user
-        }
-      });
-      
+        params: { user },
+      })
       setProfile(res.data.user)
-      
-    } 
-    catch (error) {
-      console.log("Dashboard load error:", error)
-      Alert.alert("Error", "Failed to load dashboard data")
-    } 
-    finally {
+    } catch (error) {
+      Alert.alert("Error", "Failed to load profile")
+    } finally {
       setLoading(false)
     }
   }
+
   const onRefresh = async () => {
     setRefreshing(true)
     await loadDashboardData()
@@ -69,110 +55,99 @@ export default function GuardDashboardScreen({ navigation }) {
   }
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    Alert.alert("Logout", "Sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       { text: "Logout", style: "destructive", onPress: logout },
     ])
   }
 
-  if (loading) {
-    return <LoadingSpinner />
-  }
+  if (loading) return <LoadingSpinner />
 
+  const locationItems = AllLocations?.Locations?.map(loc => ({ label: loc, value: loc })) || []
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      <View style={[styles.header, { backgroundColor: colors.card }]}> 
-        
-        
-        <View style={styles.headerContent}>
-
-          <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>Good {getGreeting()}</Text>
-            <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
-            <Text style={[styles.userRole, { color: colors.subText }]}>Current Location: {profile?.location}</Text>
-          </View>
-
-          <View>
-            <TouchableOpacity onPress={toggleTheme}>
-              <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={28} color={isDarkMode ? '#f44336' : '#f44336'} />
-            </TouchableOpacity>
-          </View>
-
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MATTE_COLORS.darkBg }}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => {}} style={{ opacity: 0 }}>
+          <Ionicons name="arrow-back" size={24} color="transparent" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={toggleTheme}>
+          <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={MATTE_COLORS.accentPrimary} />
+        </TouchableOpacity>
       </View>
 
-      <View style={[styles.content, localStyles.centerContent]}>
-        {/* Centered quick action cards */}
-        <View style={localStyles.centerRow}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <ScreenHeader
+          title={`Good ${getGreeting()}`}
+          subtitle={`${user?.name}`}
+          showIcon={false}
+        />
+
+        {/* Quick Actions */}
+        <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[localStyles.actionCard, { backgroundColor: isDarkMode ? '#e8f5e9' : '#f1f8f3' }]}
+            style={styles.actionButton}
             onPress={() => navigation.navigate("Scan")}
-            activeOpacity={0.8}
           >
-            <View style={[localStyles.actionIcon, { backgroundColor: '#4caf50' }]}>
-              <Ionicons name="scan" size={24} color="#fff" />
+            <View style={styles.actionIconBg}>
+              <Ionicons name="scan" size={24} color={MATTE_COLORS.darkBg} />
             </View>
-            <Text style={[localStyles.actionText, { color: colors.subText }]}>Scan</Text>
+            <Text style={styles.actionLabel}>Scan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[localStyles.actionCard, { backgroundColor: isDarkMode ? '#ede9fe' : '#f3e8ff' }]}
-            onPress={() => navigation.navigate("LogBook", { location: loc })}
-            activeOpacity={0.8}
+            style={styles.actionButton}
+            onPress={() => navigation.navigate("LogBook", { location })}
           >
-            <View style={[localStyles.actionIcon, { backgroundColor: '#7c3aed' }]}>
-              <Ionicons name="document-text" size={24} color="#fff" />
+            <View style={styles.actionIconBg}>
+              <Ionicons name="document-text" size={24} color={MATTE_COLORS.darkBg} />
             </View>
-            <Text style={[localStyles.actionText, { color: colors.subText }]}>Logs</Text>
+            <Text style={styles.actionLabel}>Logs</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Picker wrapped in a subtle card and centered */}
-        <View style={localStyles.pickerWrapper}>
-          <Text style={[localStyles.sectionTitle, { color: colors.text }]}>QR For Location</Text>
-          <View style={[localStyles.pickerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Picker
-              selectedValue={loc}
-              onValueChange={(value) => setLoc(value)}
-              style={{ width: '100%' }}
-            >
-              {Array.isArray(AllLocations?.Locations) && AllLocations.Locations.map((location, index) => (
-                <Picker.Item
-                  key={`${location}-${index}`}
-                  label={location}
-                  value={location}
-                />
-              ))}
-            </Picker>
-          </View>
+        {/* Location Picker */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Location</Text>
+          <FormPicker
+            icon="location"
+            value={location}
+            onValueChange={setLocation}
+            items={locationItems}
+            isFocused={focusedInput === 'location'}
+            onFocus={() => setFocusedInput('location')}
+            onBlur={() => setFocusedInput(null)}
+          />
         </View>
 
-        {/* QR card centered and styled like PasskeyCard */}
-        <View style={localStyles.qrWrapper}>
-          <View style={[localStyles.qrCardLarge, { backgroundColor: COLORS.white }]}>
+        {/* QR Code */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Guard QR Code</Text>
+          <View style={styles.qrCard}>
             <QRCode
               value={JSON.stringify({
                 guardName: user?.name,
                 guardId: user?.guardId,
-                location: loc
+                location: location,
               })}
               size={200}
-              color={COLORS.gray[800]}
-              backgroundColor={COLORS.white}
+              color={MATTE_COLORS.textPrimary}
+              backgroundColor={MATTE_COLORS.inputBg}
             />
-            <Text style={localStyles.qrNote}>Scan this QR at entry/exit</Text>
+            <Text style={styles.qrNote}>Scan at entry/exit</Text>
           </View>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={MATTE_COLORS.accentSecondary} />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -183,91 +158,86 @@ const getGreeting = () => {
   return "Evening"
 }
 
-const localStyles = StyleSheet.create({
-  centerContent: {
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-  },
-  centerRow: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
+const styles = StyleSheet.create({
+  header: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    paddingTop: 12,
+    paddingBottom: LAYOUT.spacingSm,
   },
-  actionCard: {
+  content: {
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    paddingBottom: LAYOUT.spacingLg,
+  },
+  actionsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: LAYOUT.spacingLg,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    minWidth: 160,
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    paddingVertical: LAYOUT.spacingMd,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.borderColor,
+  },
+  actionIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: MATTE_COLORS.accentPrimary,
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    marginHorizontal: 6,
+    alignItems: 'center',
     marginBottom: 8,
   },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: MATTE_COLORS.textPrimary,
   },
-  actionText: {
-    fontSize: 16,
-    fontFamily: FONTS.medium,
-  },
-  pickerWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
+  section: {
+    marginBottom: LAYOUT.spacingLg,
   },
   sectionTitle: {
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-    fontSize: 14,
-    fontFamily: FONTS.medium,
+    fontSize: 16,
+    fontWeight: '700',
+    color: MATTE_COLORS.textPrimary,
+    marginBottom: LAYOUT.spacingSm,
+    letterSpacing: 0.3,
   },
-  pickerCard: {
-    width: '100%',
-    borderRadius: 12,
-    paddingHorizontal: 8,
+  qrCard: {
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    padding: LAYOUT.spacingMd,
+    alignItems: 'center',
     borderWidth: 1,
-  },
-  qrWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  qrCardLarge: {
-    alignItems: 'center',
-    borderRadius: 24,
-    padding: SPACING.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 8,
-    minWidth: 260,
-    minHeight: 260,
-    justifyContent: 'center',
+    borderColor: MATTE_COLORS.borderColor,
   },
   qrNote: {
-    fontSize: SIZES.xs,
-    fontFamily: FONTS.regular,
-    color: COLORS.gray[600],
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-    maxWidth: 220,
+    fontSize: 12,
+    color: MATTE_COLORS.textSecondary,
+    marginTop: LAYOUT.spacingSm,
+    fontWeight: '500',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: MATTE_COLORS.accentSecondary + '15',
+    borderRadius: 12,
+    paddingVertical: LAYOUT.spacingMd,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.accentSecondary + '30',
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: MATTE_COLORS.accentSecondary,
   },
 })
 

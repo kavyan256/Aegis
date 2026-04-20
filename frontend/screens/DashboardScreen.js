@@ -7,12 +7,13 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
 import { outpass, commonAPI } from "../services/api"
 import styles from "../styles/DashboardStyles"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
 
 import LoadingSpinner from "../components/LoadingSpinner"
 import PasskeyCard from "../components/PasskeyCard"
 
 export default function DashboardScreen({ navigation }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth()
   const [passkey, setPasskey] = useState(null)
   const [stats, setStats] = useState({
@@ -71,27 +72,27 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: MATTE_COLORS.darkBg }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={[styles.header, { backgroundColor: colors.card }]}> 
+      <View style={[styles.header, { backgroundColor: MATTE_COLORS.cardBg }]}> 
         
         
         <View style={styles.headerContent}>
 
           <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>Good {getGreeting()}</Text>
-            <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
-            <Text style={[styles.studentId, { color: colors.text }]}>{user?.studentId}</Text>
+            <Text style={[styles.greeting, { color: MATTE_COLORS.textPrimary }]}>Good {getGreeting()}</Text>
+            <Text style={[styles.userName, { color: MATTE_COLORS.textPrimary }]}>{user?.name}</Text>
+            <Text style={[styles.studentId, { color: MATTE_COLORS.textSecondary }]}>{user?.studentId}</Text>
           </View>
 
           <View>
             <TouchableOpacity onPress={toggleTheme}>
-              <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={colors.text} />
+              <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={MATTE_COLORS.accentPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={28} color={isDarkMode ? '#f44336' : '#f44336'} />
+              <Ionicons name="log-out-outline" size={28} color={MATTE_COLORS.accentSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -104,34 +105,34 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("Scan")}> 
-              <View style={[styles.actionIcon, { backgroundColor: isDarkMode ? '#4caf5020' : '#4caf5020' }]}> 
-                <Ionicons name="scan" size={24} color={isDarkMode ? '#4caf50' : '#4caf50'} />
+              <View style={[styles.actionIcon, { backgroundColor: '#4caf5020' }]}> 
+                <Ionicons name="scan" size={24} color={'#4caf50'} />
               </View>
-              <Text style={[styles.actionText, { color: colors.subText }]}>Scan</Text>
+              <Text style={[styles.actionText, { color: MATTE_COLORS.textSecondary }]}>Scan</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("Library")}> 
-              <View style={[styles.actionIcon, { backgroundColor: isDarkMode ? '#2196f320' : '#2196f320' }]}> 
-                <Ionicons name="book" size={24} color={isDarkMode ? '#2196f3' : '#2196f3'} />
+              <View style={[styles.actionIcon, { backgroundColor: '#2196f320' }]}> 
+                <Ionicons name="book" size={24} color={'#2196f3'} />
               </View>
-              <Text style={[styles.actionText, { color: colors.subText }]}>Library</Text>
+              <Text style={[styles.actionText, { color: MATTE_COLORS.textSecondary }]}>Library</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("SAC")}> 
-              <View style={[styles.actionIcon, { backgroundColor: isDarkMode ? '#f4433620' : '#f4433620' }]}> 
-                <Ionicons name="bicycle" size={24} color={isDarkMode ? '#ff9800' : '#ff9800'} />
+              <View style={[styles.actionIcon, { backgroundColor: '#f4433620' }]}> 
+                <Ionicons name="bicycle" size={24} color={'#ff9800'} />
               </View>
-              <Text style={[styles.actionText, { color: colors.subText }]}>SAC</Text>
+              <Text style={[styles.actionText, { color: MATTE_COLORS.textSecondary }]}>SAC</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("Profile")}> 
-              <View style={[styles.actionIcon, { backgroundColor: isDarkMode ? '#4caf5020' : '#4caf5020' }]}> 
-                <Ionicons name="person" size={24} color={isDarkMode ? '#4caf50' : '#4caf50'} />
+              <View style={[styles.actionIcon, { backgroundColor: '#4caf5020' }]}> 
+                <Ionicons name="person" size={24} color={'#4caf50'} />
               </View>
-              <Text style={[styles.actionText, { color: colors.subText }]}>Profile</Text>
+              <Text style={[styles.actionText, { color: MATTE_COLORS.textSecondary }]}>Profile</Text>
             </TouchableOpacity>
           </View>
         </View>

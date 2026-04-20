@@ -13,9 +13,10 @@ import styles from "../styles/LibraryStyles"
 import { useTheme } from "../context/ThemeContext"
 import { useAuth } from "../context/AuthContext"
 import { securityAPI } from "../services/api"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
 
 export default function LogBook({ navigation, route }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme()
+  const { isDarkMode, toggleTheme } = useTheme()
   const { token } = useAuth()
 
   const [logs, setLogs] = useState([])
@@ -68,9 +69,6 @@ export default function LogBook({ navigation, route }) {
     setRefreshing(false)
   }, [fetchLogs])
 
-  const iconColor = colors.icon || colors.text
-  const subTextColor = "black"
-
   const renderLog = useCallback(
     ({ item }) => {
       const actionLabel = item.action === "entry" ? "Entry" : item.action === "exit" ? "Exit" : item.action
@@ -86,24 +84,24 @@ export default function LogBook({ navigation, route }) {
             styles.card,
             styles.shadow,
             {
-              backgroundColor: colors.card,
+              backgroundColor: MATTE_COLORS.cardBg,
               borderLeftWidth: 4,
               borderLeftColor: item.action === "entry" ? "#22c55e" : "#ef4444",
               marginHorizontal: 16,
             },
           ]}
         >
-          <Text style={[styles.sectionTitle, { textAlign: "left", color: colors.text }]}>{actionLabel}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>Name: {residentName}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>Student ID: {residentStudentId}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>User ID: {residentSystemId}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>Guard: {guardOnDuty}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>Location: {item.location || "-"}</Text>
-          <Text style={{ color: subTextColor, fontSize: 12 }}>Time: {timestamp}</Text>
+          <Text style={[styles.sectionTitle, { textAlign: "left", color: MATTE_COLORS.textPrimary }]}>{actionLabel}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, marginBottom: 4 }}>Name: {residentName}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, marginBottom: 4 }}>Student ID: {residentStudentId}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, marginBottom: 4 }}>User ID: {residentSystemId}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, marginBottom: 4 }}>Guard: {guardOnDuty}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, marginBottom: 4 }}>Location: {item.location || "-"}</Text>
+          <Text style={{ color: MATTE_COLORS.textSecondary, fontSize: 12 }}>Time: {timestamp}</Text>
         </View>
       )
     },
-    [colors.card, colors.text, subTextColor],
+    [],
   )
 
   const listEmptyComponent = useMemo(() => {
@@ -112,33 +110,33 @@ export default function LogBook({ navigation, route }) {
     }
     return (
       <View style={{ padding: 32, alignItems: "center" }}>
-        <Ionicons name="document-text-outline" size={36} color={subTextColor} />
-        <Text style={{ marginTop: 12, color: subTextColor }}>No logs yet for this location.</Text>
+        <Ionicons name="document-text-outline" size={36} color={MATTE_COLORS.textSecondary} />
+        <Text style={{ marginTop: 12, color: MATTE_COLORS.textSecondary }}>No logs yet for this location.</Text>
       </View>
     )
-  }, [loading, subTextColor])
+  }, [loading])
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: MATTE_COLORS.darkBg }]}>
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={MATTE_COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Entry Exit Logs</Text>
+        <Text style={[styles.headerTitle, { color: MATTE_COLORS.textPrimary }]}>Entry Exit Logs</Text>
         <TouchableOpacity onPress={toggleTheme}>
-          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={iconColor} />
+          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={MATTE_COLORS.accentPrimary} />
         </TouchableOpacity>
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Location: {displayedLocation}</Text>
-        <Text style={{ color: subTextColor }}>Showing {logs.length} record(s)</Text>
+        <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>Location: {displayedLocation}</Text>
+        <Text style={{ color: MATTE_COLORS.textSecondary }}>Showing {logs.length} record(s)</Text>
         {error && <Text style={{ color: "#ef4444", marginTop: 4 }}>{error}</Text>}
       </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color={colors.text} />
+          <ActivityIndicator size="large" color={MATTE_COLORS.accentPrimary} />
         </View>
       ) : (
         <FlatList

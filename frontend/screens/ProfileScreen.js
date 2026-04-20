@@ -9,11 +9,12 @@ import { commonAPI } from "../services/api"
 import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
 import { AcademicYearList, AcademicYearMap, DepartmentList, DepartmentMap } from "../utils/enumMappings"
 import LoadingSpinner from "../components/LoadingSpinner"
+import { MATTE_COLORS, LAYOUT } from "../utils/theme"
 
 import { Picker } from "@react-native-picker/picker"
 
 export default function ProfileScreen() {
-  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth()
   const [profile, setProfile] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -79,73 +80,73 @@ export default function ProfileScreen() {
   const idLabel = isSecurity ? "Guard ID" : "Student ID"
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { backgroundColor: colors.card }]}> 
+    <ScrollView style={[styles.container, { backgroundColor: MATTE_COLORS.darkBg }]}> 
+      <View style={[styles.header, { backgroundColor: MATTE_COLORS.cardBg }]}> 
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', width: '100%' }}>
           <TouchableOpacity onPress={toggleTheme} style={{ padding: 8, alignSelf: 'flex-end' }}>
-            <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={colors.text} />
+            <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={24} color={MATTE_COLORS.accentPrimary} />
           </TouchableOpacity>
         </View>
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: colors.background + '20' }]}> 
-            <Text style={[styles.avatarText, { color: colors.text }]}>{profile?.name?.charAt(0)?.toUpperCase() || "U"}</Text>
+          <View style={[styles.avatar, { backgroundColor: MATTE_COLORS.inputBg }]}> 
+            <Text style={[styles.avatarText, { color: MATTE_COLORS.textPrimary }]}>{profile?.name?.charAt(0)?.toUpperCase() || "U"}</Text>
           </View>
-          <Text style={[styles.userName, { color: colors.text }]}>{profile?.name}</Text>
-          <Text style={[styles.userRole, { color: colors.text, opacity: 0.8 }]}>{profile?.role?.toUpperCase()}</Text>
+          <Text style={[styles.userName, { color: MATTE_COLORS.textPrimary }]}>{profile?.name}</Text>
+          <Text style={[styles.userRole, { color: MATTE_COLORS.textSecondary }]}>{profile?.role?.toUpperCase()}</Text>
         </View>
       </View>
 
       <View style={styles.content}>
-        <View style={[styles.section, { backgroundColor: colors.card }]}> 
+        <View style={[styles.section, { backgroundColor: MATTE_COLORS.cardBg }]}> 
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal Information</Text>
+            <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>Personal Information</Text>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => (editing ? handleSave() : setEditing(true))}
               disabled={saving}
             >
-              <Ionicons name={editing ? "checkmark" : "pencil"} size={20} color={colors.text} />
-              <Text style={[styles.editButtonText, { color: colors.text }]}>{editing ? (saving ? "Saving..." : "Save") : "Edit"}</Text>
+              <Ionicons name={editing ? "checkmark" : "pencil"} size={20} color={MATTE_COLORS.accentPrimary} />
+              <Text style={[styles.editButtonText, { color: MATTE_COLORS.accentPrimary }]}>{editing ? (saving ? "Saving..." : "Save") : "Edit"}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Full Name</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Full Name</Text>
             {editing ? (
               <TextInput
-                style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
                 value={profile?.name || ""}
                 onChangeText={(value) => updateProfile("name", value)}
               />
             ) : (
-              <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.name}</Text>
+              <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.name}</Text>
             )}
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Email</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Email</Text>
              {editing ? (
               <TextInput
-                style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
                 value={profile?.email || ""}
                 onChangeText={(value) => updateProfile("email", value)}
               />
             ) : (
-            <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.email}</Text>
+            <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.email}</Text>
             )}
           </View>
 
           {isStudent || isSecurity ? (
             <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{idLabel}</Text>
+              <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>{idLabel}</Text>
               {editing ? (
                 <TextInput
-                  style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                  style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
                   value={isSecurity ? profile?.guardId || "" : profile?.studentId || ""}
                   onChangeText={(value) => updateProfile(isSecurity ? "guardId" : "studentId", value)}
                 />
               ) : (
-                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>
                   {isSecurity ? profile?.guardId : profile?.studentId}
                 </Text>
               )}
@@ -153,23 +154,23 @@ export default function ProfileScreen() {
           ) : null}
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Phone Number</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Phone Number</Text>
             {editing ? (
               <TextInput
-                style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
                 value={profile?.phoneNumber || ""}
                 onChangeText={(value) => updateProfile("phoneNumber", value)}
                 keyboardType="phone-pad"
               />
             ) : (
-              <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.phoneNumber}</Text>
+              <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.phoneNumber}</Text>
             )}
           </View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card }]}> 
+        <View style={[styles.section, { backgroundColor: MATTE_COLORS.cardBg }]}> 
           <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>
             {isStudent ? "Academic Information" : "Hostel Information"}
           </Text>
           </View>
@@ -177,24 +178,24 @@ export default function ProfileScreen() {
           isStudent && !editing ? (
             <>
               <View style={styles.fieldContainer}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>Department</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{DepartmentMap[profile?.department] || profile?.department}</Text>
+                <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Department</Text>
+                <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{DepartmentMap[profile?.department] || profile?.department}</Text>
               </View>
 
               <View style={styles.fieldContainer}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>Year</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{AcademicYearMap[profile?.year] || profile?.year}</Text>
+                <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Year</Text>
+                <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{AcademicYearMap[profile?.year] || profile?.year}</Text>
               </View>
 
               <View style={styles.fieldContainer}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>Hostel</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.hostel}</Text>
+                <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Hostel</Text>
+                <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.hostel}</Text>
               </View>
             </>
           ) : isStudent && editing ? (
             <>
-              <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-                <Ionicons name="library-outline" size={20} color={colors.text} style={styles.inputIcon}/> 
+              <View style={[styles.pickerContainer, { backgroundColor: MATTE_COLORS.inputBg, borderColor: MATTE_COLORS.borderColor }]}> 
+                <Ionicons name="library-outline" size={20} color={MATTE_COLORS.textSecondary} style={styles.inputIcon}/> 
                 <Picker
                   selectedValue={profile.department || ""}
                   style={styles.picker}
@@ -205,8 +206,8 @@ export default function ProfileScreen() {
                   ))}
                 </Picker>
               </View>
-              <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-                <Ionicons name="calendar-outline" size={20} color={colors.text} style={styles.inputIcon} />
+              <View style={[styles.pickerContainer, { backgroundColor: MATTE_COLORS.inputBg, borderColor: MATTE_COLORS.borderColor }]}> 
+                <Ionicons name="calendar-outline" size={20} color={MATTE_COLORS.textSecondary} style={styles.inputIcon} />
                 <Picker
                   selectedValue={profile.year || ""}
                   style={styles.picker}
@@ -217,8 +218,8 @@ export default function ProfileScreen() {
                   ))}
                 </Picker>
               </View>
-              <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-                <Ionicons name="home-outline" size={20} color={colors.text} style={styles.inputIcon} />
+              <View style={[styles.pickerContainer, { backgroundColor: MATTE_COLORS.inputBg, borderColor: MATTE_COLORS.borderColor }]}> 
+                <Ionicons name="home-outline" size={20} color={MATTE_COLORS.textSecondary} style={styles.inputIcon} />
                 <Picker
                   selectedValue={profile.hostel || ""}
                   style={styles.picker}
@@ -233,8 +234,8 @@ export default function ProfileScreen() {
               </>
             ) : (
               <View style={styles.fieldContainer}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>Assigned Hostel</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.hostel || "Not assigned"}</Text>
+                <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Assigned Hostel</Text>
+                <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.hostel || "Not assigned"}</Text>
               </View>
             )
           }
@@ -242,84 +243,83 @@ export default function ProfileScreen() {
               
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Room Number</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Room Number</Text>
             {editing ? (
               <TextInput
-                style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
                 value={profile?.roomNumber || ""}
                 onChangeText={(value) => updateProfile("roomNumber", value)}
               />
             ) : (
-              <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.roomNumber || "Not specified"}</Text>
+              <Text style={[styles.fieldValue, { color: MATTE_COLORS.textPrimary }]}>{profile?.roomNumber || "Not specified"}</Text>
             )}
           </View>
         </View>
 
         
-        <View style={[styles.section, { backgroundColor: colors.card }]}> 
+        <View style={[styles.section, { backgroundColor: MATTE_COLORS.cardBg }]}> 
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Change Password</Text>
+            <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>Change Password</Text>
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Current Password</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Current Password</Text>
             <TextInput
-              style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+              style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry={!showCurrent}
               placeholder="Enter current password"
-              placeholderTextColor={colors.subText}
+              placeholderTextColor={MATTE_COLORS.textSecondary}
               autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowCurrent(v => !v)} style={{ position: 'absolute', right: 12, top: 34 }}>
-              <Ionicons name={showCurrent ? "eye-outline" : "eye-off-outline"} size={18} color={colors.subText} />
+              <Ionicons name={showCurrent ? "eye-outline" : "eye-off-outline"} size={18} color={MATTE_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>New Password</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>New Password</Text>
             <TextInput
-              style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+              style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry={!showNew}
               placeholder="Enter new password"
-              placeholderTextColor={colors.subText}
+              placeholderTextColor={MATTE_COLORS.textSecondary}
               autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowNew(v => !v)} style={{ position: 'absolute', right: 12, top: 34 }}>
-              <Ionicons name={showNew ? "eye-outline" : "eye-off-outline"} size={18} color={colors.subText} />
+              <Ionicons name={showNew ? "eye-outline" : "eye-off-outline"} size={18} color={MATTE_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Confirm New Password</Text>
+            <Text style={[styles.fieldLabel, { color: MATTE_COLORS.textSecondary }]}>Confirm New Password</Text>
             <TextInput
-              style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+              style={[styles.fieldInput, { color: MATTE_COLORS.textPrimary, borderBottomColor: MATTE_COLORS.borderColor }]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirm}
               placeholder="Confirm new password"
-              placeholderTextColor={colors.subText}
+              placeholderTextColor={MATTE_COLORS.textSecondary}
               autoCapitalize="none"
             />
             <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={{ position: 'absolute', right: 12, top: 34 }}>
-              <Ionicons name={showConfirm ? "eye-outline" : "eye-off-outline"} size={18} color={colors.subText} />
+              <Ionicons name={showConfirm ? "eye-outline" : "eye-off-outline"} size={18} color={MATTE_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
             <TouchableOpacity
               onPress={() => {
-                // clear fields
                 setCurrentPassword("")
                 setNewPassword("")
                 setConfirmPassword("")
               }}
               style={{ padding: 10, marginRight: 8 }}
             >
-              <Text style={{ color: colors.text }}>Cancel</Text>
+              <Text style={{ color: MATTE_COLORS.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={async () => {
@@ -338,11 +338,7 @@ export default function ProfileScreen() {
                 try {
                   setPwdSaving(true)
                   const res = await commonAPI.changePassword({ currentPassword, newPassword, confirmPassword })
-
-                  console.log(res.message)
-                  
                   setPwdSaving(false)
-
                   Alert.alert("Success", res?.data?.message || "Password updated")
                   setCurrentPassword("")
                   setNewPassword("")
@@ -356,14 +352,14 @@ export default function ProfileScreen() {
               style={[styles.editButton, { paddingHorizontal: 16 }]}
               disabled={pwdSaving}
             >
-              <Ionicons name="key-outline" size={18} color={colors.text} />
-              <Text style={[styles.editButtonText, { color: colors.text, marginLeft: SPACING.xs }]}>{pwdSaving ? "Updating..." : "Update Password"}</Text>
+              <Ionicons name="key-outline" size={18} color={MATTE_COLORS.accentPrimary} />
+              <Text style={[styles.editButtonText, { color: MATTE_COLORS.accentPrimary, marginLeft: SPACING.xs }]}>{pwdSaving ? "Updating..." : "Update Password"}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card }]}> 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Status</Text>
+        <View style={[styles.section, { backgroundColor: MATTE_COLORS.cardBg }]}> 
+          <Text style={[styles.sectionTitle, { color: MATTE_COLORS.textPrimary }]}>Account Status</Text>
 
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
@@ -375,19 +371,19 @@ export default function ProfileScreen() {
                   },
                 ]}
               />
-              <Text style={[styles.statusText, { color: colors.text }]}>{profile?.isActive ? "Active" : "Inactive"}</Text>
+              <Text style={[styles.statusText, { color: MATTE_COLORS.textPrimary }]}>{profile?.isActive ? "Active" : "Inactive"}</Text>
             </View>
 
             <View style={styles.statusItem}>
-              <Text style={[styles.statusLabel, { color: colors.text }]}>Member since</Text>
-              <Text style={[styles.statusValue, { color: colors.text }]}>{new Date(profile?.createdAt).toLocaleDateString()}</Text>
+              <Text style={[styles.statusLabel, { color: MATTE_COLORS.textSecondary }]}>Member since</Text>
+              <Text style={[styles.statusValue, { color: MATTE_COLORS.textPrimary }]}>{new Date(profile?.createdAt).toLocaleDateString()}</Text>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: isDarkMode ? '#f4433620' : COLORS.error + '10' }]} onPress={logout}>
-          <Ionicons name="log-out-outline" size={20} color={isDarkMode ? '#f44336' : COLORS.error} />
-          <Text style={[styles.logoutButtonText, { color: isDarkMode ? '#f44336' : COLORS.error }]}>Logout</Text>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: MATTE_COLORS.accentSecondary + '20' }]} onPress={logout}>
+          <Ionicons name="log-out-outline" size={20} color={MATTE_COLORS.accentSecondary} />
+          <Text style={[styles.logoutButtonText, { color: MATTE_COLORS.accentSecondary }]}>Logout</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

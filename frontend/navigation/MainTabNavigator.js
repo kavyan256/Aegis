@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { Ionicons } from "@expo/vector-icons"
+import { MATTE_COLORS } from "../utils/theme"
 
 // Import screens
 import DashboardScreen from "../screens/DashboardScreen"
@@ -36,8 +37,12 @@ export default function MainTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />
         },
-        tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: MATTE_COLORS.accentPrimary,
+        tabBarInactiveTintColor: MATTE_COLORS.textSecondary,
+        tabBarStyle: {
+          backgroundColor: MATTE_COLORS.cardBg,
+          borderTopColor: MATTE_COLORS.borderColor,
+        },
         headerShown: false,
       })}
     >

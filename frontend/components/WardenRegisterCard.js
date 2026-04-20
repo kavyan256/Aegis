@@ -1,73 +1,56 @@
+import React from 'react'
+import { View, Text, StyleSheet } from 'react-native'
+import FormInput from './FormInput'
+import FormPicker from './FormPicker'
+import { MATTE_COLORS, LAYOUT } from '../utils/theme'
 
-import React from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { Ionicons } from '@expo/vector-icons';
-
-export default function WardenRegisterCard({ formData, updateFormData, hostels, colors }) {
+export default function WardenRegisterCard({
+  formData,
+  updateFormData,
+  hostels,
+  focusedInput,
+  setFocusedInput,
+}) {
   return (
-    <>
-      <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-        <Ionicons name="mail-outline" size={20} color={colors.text} style={styles.inputIcon} />
-        <TextInput
-          style={[styles.input, { color: colors.text }]}
-          placeholder="Email Address *"
-          placeholderTextColor={colors.text}
-          value={formData.email}
-          onChangeText={value => updateFormData('email', value)}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-      <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
-        <Ionicons name="home-outline" size={20} color={colors.text} style={styles.inputIcon} />
-        <Picker
-          selectedValue={formData.hostel}
-          style={styles.picker}
-          onValueChange={value => updateFormData('hostel', value)}>
-          <Picker.Item label="Select Hostel Assigned *" value="" />
-          {hostels.map(hostel => (
-            <Picker.Item key={hostel} label={hostel} value={hostel} />
-          ))}
-        </Picker>
-      </View>
-    </>
-  );
+    <View style={styles.card}>
+      <Text style={styles.title}>Warden Details</Text>
+
+      <FormPicker
+        icon="home"
+        value={formData.hostel}
+        onValueChange={v => updateFormData('hostel', v)}
+        items={hostels}
+        isFocused={focusedInput === 'hostel'}
+        onFocus={() => setFocusedInput('hostel')}
+        onBlur={() => setFocusedInput(null)}
+      />
+
+      <FormInput
+        icon="id-card"
+        placeholder="Warden ID"
+        value={formData.wardenId}
+        onChangeText={v => updateFormData('wardenId', v)}
+        isFocused={focusedInput === 'wardenId'}
+        onFocus={() => setFocusedInput('wardenId')}
+        onBlur={() => setFocusedInput(null)}
+      />
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    paddingHorizontal: 12,
+  card: {
+    backgroundColor: MATTE_COLORS.inputBg,
+    borderRadius: 14,
+    padding: LAYOUT.screenPaddingHorizontal,
+    marginBottom: LAYOUT.spacingMd,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: MATTE_COLORS.borderColor,
   },
-  pickerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    height: 50,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    height: 50,
+  title: {
     fontSize: 16,
-    color: '#333',
+    fontWeight: '700',
+    color: MATTE_COLORS.textPrimary,
+    marginBottom: LAYOUT.spacingMd,
   },
-  picker: {
-    flex: 1,
-    height: 50,
-  },
-});
+})

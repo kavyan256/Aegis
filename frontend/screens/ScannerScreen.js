@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -8,196 +8,245 @@ import {
   Alert,
   SafeAreaView,
   Modal,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../context/ThemeContext";
-import { COLORS, FONTS } from "../utils/constants";
-import LoadingSpinner from "../components/LoadingSpinner";
-import styles from "../styles/ScannerStyles";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { securityAPI } from "../services/api";
-import SafeJourneyCard from "../components/SafeJourneyCard";
-import WelcomeBackCard from "../components/WelcomeBackCard";
+  StyleSheet,
+} from "react-native"
+import { Ionicons } from "@expo/vector-icons"
+import { useTheme } from "../context/ThemeContext"
+import LoadingSpinner from "../components/LoadingSpinner"
+import { CameraView, useCameraPermissions } from "expo-camera"
+import { securityAPI } from "../services/api"
+import SafeJourneyCard from "../components/SafeJourneyCard"
+import WelcomeBackCard from "../components/WelcomeBackCard"
+import { MATTE_COLORS, LAYOUT, SPACING } from "../utils/theme"
 
-export default function Scanner({ navigation }) {
-  const { isDarkMode, toggleTheme, colors } = useTheme();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const [action, setAction] = useState("");
-  const [loc, setLoc] = useState("");
-  const [showPopup, setShowPopup] = useState(false);
+export default function ScannerScreen({ navigation }) {
+  const { isDarkMode, toggleTheme } = useTheme()
+  const [permission, requestPermission] = useCameraPermissions()
+  const [scanned, setScanned] = useState(false)
+  const [action, setAction] = useState("")
+  const [location, setLocation] = useState("")
+  const [showPopup, setShowPopup] = useState(false)
 
   useEffect(() => {
     if (!permission) {
-      requestPermission();
+      requestPermission()
     }
-  }, [permission]);
+  }, [permission])
 
   useEffect(() => {
     if (action === "exit" || action === "entry") {
-      setShowPopup(true);
-      setScanned(true); // Close camera
+      setShowPopup(true)
+      setScanned(true)
     }
-  }, [action]);
+  }, [action])
 
-  const handleBarCodeScanned = async ({ type, data }) => {
+  const handleBarCodeScanned = async ({ data }) => {
     if (!scanned) {
-      setScanned(true);
+      setScanned(true)
       try {
-        const parsed = JSON.parse(data);
-        const location = parsed?.location || "";
-
-        setLoc(location);
+        const parsed = JSON.parse(data)
+        setLocation(parsed?.location || "")
 
         const response = await securityAPI.logEntry({
-          location,
+          location: parsed?.location,
           hash: parsed?.hash,
           studentId: parsed?.studentId,
           userId: parsed?.userId,
-        });
+        })
 
-        setAction(response?.data?.log?.action || "");
+        setAction(response?.data?.log?.action || "")
       } catch (error) {
-        console.log("QR scan error:", error?.response?.data || error);
-        Alert.alert("Invalid QR", error?.response?.data?.message || "Unable to scan this QR code");
-        setScanned(false);
+        Alert.alert("Invalid QR", error?.response?.data?.message || "Unable to scan this QR")
+        setScanned(false)
       }
-
     }
-  };
-
-  if (!permission) {
-    return <LoadingSpinner />;
   }
+
+  if (!permission) return <LoadingSpinner />
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, flex: 1 }]}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ color: colors.text }}>No access to camera</Text>
-          <TouchableOpacity
-            onPress={requestPermission}
-            style={{ padding: 8, marginTop: 12, backgroundColor: colors.card, borderRadius: 8 }}
-          >
-            <Text style={{ color: colors.text }}>Grant Permission</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Ionicons name="camera" size={48} color={MATTE_COLORS.accentPrimary} />
+          <Text style={styles.permissionText}>Camera access required</Text>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    );
+    )
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          top: 20,
-          padding: 16,
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={MATTE_COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 20,
-            fontFamily: FONTS.bold,
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
-          Scan QR/Barcode
-        </Text>
-        <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
-          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={colors.text} />
+        <Text style={styles.headerTitle}>Scan QR Code</Text>
+        <TouchableOpacity onPress={toggleTheme}>
+          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={24} color={MATTE_COLORS.accentPrimary} />
         </TouchableOpacity>
       </View>
 
-      
-
-      {/* Camera Scanner */}
+      {/* Camera */}
       {!showPopup && (
-        <View
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            borderRadius: 16,
-            margin: 16,
-            borderWidth: 2,
-            borderColor: colors.text,
-          }}
-        >
+        <View style={styles.cameraContainer}>
           <CameraView
-            style={{ flex: 1 }}
+            style={styles.camera}
             barcodeScannerSettings={{
               barcodeTypes: ["qr", "ean13", "ean8", "code128"],
             }}
             onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           />
+          <View style={styles.scannerFrame} />
         </View>
       )}
 
-      {/* Popup Cards */}
-      <Modal
-        visible={showPopup}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowPopup(false)}
-      >
-        <View style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.3)",
-        }}>
+      {/* Scan Result Popup */}
+      <Modal visible={showPopup} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
           {action === "exit" && (
             <SafeJourneyCard
               onClose={() => {
-                setShowPopup(false);
-                setScanned(false);
-                setAction(null);
-                setScanResult(null);
-                navigation.goBack();
-              }} location={loc} />
+                setShowPopup(false)
+                setScanned(false)
+                setAction("")
+                setLocation("")
+                navigation.goBack()
+              }}
+              location={location}
+            />
           )}
           {action === "entry" && (
             <WelcomeBackCard
               onClose={() => {
-                setShowPopup(false);
-                setScanned(false);
-                setAction(null);
-                setScanResult(null);
-                navigation.goBack();
-              }} location={loc} />
+                setShowPopup(false)
+                setScanned(false)
+                setAction("")
+                setLocation("")
+                navigation.goBack()
+              }}
+              location={location}
+            />
           )}
         </View>
       </Modal>
 
-      {/* Buttons & Result */}
+      {/* Rescan Button */}
       {scanned && !showPopup && (
-        <TouchableOpacity
-          onPress={() => {
-            setScanned(false);
-            setScanResult(null);
-            setAction(null);
-          }}
-          style={{
-            backgroundColor: colors.card,
-            padding: 16,
-            borderRadius: 12,
-            alignSelf: "center",
-            marginBottom: 24,
-          }}
-        >
-          <Text style={{ color: colors.text, fontFamily: FONTS.bold }}>Tap to Scan Again</Text>
-        </TouchableOpacity>
+        <View style={styles.rescanContainer}>
+          <TouchableOpacity
+            style={styles.rescanButton}
+            onPress={() => {
+              setScanned(false)
+              setAction("")
+              setLocation("")
+            }}
+          >
+            <Ionicons name="refresh" size={20} color={MATTE_COLORS.textPrimary} />
+            <Text style={styles.rescanText}>Scan Again</Text>
+          </TouchableOpacity>
+        </View>
       )}
-      
     </SafeAreaView>
-  );
+  )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: MATTE_COLORS.darkBg,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    paddingVertical: SPACING.md,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: MATTE_COLORS.textPrimary,
+    letterSpacing: 0.3,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SPACING.lg,
+  },
+  permissionText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: MATTE_COLORS.textPrimary,
+  },
+  permissionButton: {
+    backgroundColor: MATTE_COLORS.accentPrimary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: 12,
+  },
+  permissionButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: MATTE_COLORS.darkBg,
+  },
+  cameraContainer: {
+    flex: 1,
+    margin: SPACING.lg,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: MATTE_COLORS.accentPrimary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  camera: {
+    flex: 1,
+  },
+  scannerFrame: {
+    position: 'absolute',
+    width: '70%',
+    aspectRatio: 1,
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: '-35%' }, { translateY: '-35%' }],
+    borderWidth: 3,
+    borderColor: MATTE_COLORS.accentPrimary,
+    borderRadius: 24,
+    opacity: 0.8,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  rescanContainer: {
+    paddingHorizontal: LAYOUT.screenPaddingHorizontal,
+    paddingVertical: SPACING.lg,
+  },
+  rescanButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: MATTE_COLORS.cardBg,
+    paddingVertical: SPACING.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: MATTE_COLORS.accentPrimary,
+    gap: SPACING.sm,
+  },
+  rescanText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: MATTE_COLORS.textPrimary,
+  },
+})

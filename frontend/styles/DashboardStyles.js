@@ -1,13 +1,13 @@
 import { StyleSheet } from "react-native"
-import { COLORS, FONTS, SIZES, SPACING } from "../utils/constants"
+import { MATTE_COLORS, SPACING } from "../utils/theme"
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: MATTE_COLORS.darkBg,
   },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: MATTE_COLORS.cardBg,
     paddingTop: 50,
     paddingBottom: SPACING.lg,
     paddingHorizontal: SPACING.lg,
@@ -18,26 +18,26 @@ export default StyleSheet.create({
     alignItems: "flex-start",
   },
   greeting: {
-    fontSize: SIZES.md,
-    fontFamily: FONTS.regular,
-    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '400',
+    color: MATTE_COLORS.textSecondary,
     opacity: 0.8,
   },
   userName: {
-    fontSize: SIZES.xl,
-    fontFamily: FONTS.bold,
-    color: COLORS.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: MATTE_COLORS.textPrimary,
     marginTop: SPACING.xs,
   },
   studentId: {
-    fontSize: SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: '400',
+    color: MATTE_COLORS.textSecondary,
     opacity: 0.8,
     marginTop: SPACING.xs,
   },
   logoutButton: {
-    backgroundColor: COLORS.white + "20",
+    backgroundColor: MATTE_COLORS.accentSecondary + "20",
     marginTop : 15,
     borderRadius: 8,
   },
@@ -45,9 +45,9 @@ export default StyleSheet.create({
     padding: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: SIZES.lg,
-    fontFamily: FONTS.bold,
-    color: COLORS.gray[800],
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: MATTE_COLORS.textPrimary,
     marginBottom: SPACING.md,
   },
   quickActions: {
@@ -60,7 +60,7 @@ export default StyleSheet.create({
   },
   actionCard: {
     width: "48%",
-    backgroundColor: COLORS.white,
+    backgroundColor: MATTE_COLORS.cardBg,
     padding: SPACING.md,
     borderRadius: 12,
     alignItems: "center",
@@ -80,9 +80,9 @@ export default StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   actionText: {
-    fontSize: SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.gray[700],
+    fontSize: 13,
+    fontWeight: '400',
+    color: MATTE_COLORS.textSecondary,
     textAlign: "center",
   },
 })
