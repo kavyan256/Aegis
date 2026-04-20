@@ -41,7 +41,7 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     try {
       const response = await commonAPI.getProfile()
-      setProfile(response.data.userData)
+      setProfile(response.data.userData || response.data.user)
     } catch (error) {
       console.log("Profile load error:", error)
       Alert.alert("Error", "Failed to load profile")
@@ -73,6 +73,11 @@ export default function ProfileScreen() {
   if (loading) {
     return <LoadingSpinner />
   }
+
+  const isStudent = profile?.role === "student"
+  const isSecurity = profile?.role === "security"
+  const idLabel = isSecurity ? "Guard ID" : "Student ID"
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}> 
       <View style={[styles.header, { backgroundColor: colors.card }]}> 
@@ -130,18 +135,22 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Student ID</Text>
-            {editing ? (
-              <TextInput
-                style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
-                value={profile?.studentId || ""}
-                onChangeText={(value) => updateProfile("studentId", value)}
-              />
-            ) : (
-            <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.studentId}</Text>
-            )}
-          </View>
+          {isStudent || isSecurity ? (
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{idLabel}</Text>
+              {editing ? (
+                <TextInput
+                  style={[styles.fieldInput, { color: colors.text, borderBottomColor: colors.text }]}
+                  value={isSecurity ? profile?.guardId || "" : profile?.studentId || ""}
+                  onChangeText={(value) => updateProfile(isSecurity ? "guardId" : "studentId", value)}
+                />
+              ) : (
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {isSecurity ? profile?.guardId : profile?.studentId}
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           <View style={styles.fieldContainer}>
             <Text style={[styles.fieldLabel, { color: colors.text }]}>Phone Number</Text>
@@ -160,10 +169,12 @@ export default function ProfileScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.card }]}> 
           <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Academic Information</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {isStudent ? "Academic Information" : "Hostel Information"}
+          </Text>
           </View>
           {
-          !editing ? (
+          isStudent && !editing ? (
             <>
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>Department</Text>
@@ -180,7 +191,7 @@ export default function ProfileScreen() {
                 <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.hostel}</Text>
               </View>
             </>
-          ) : (
+          ) : isStudent && editing ? (
             <>
               <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderColor: colors.text }]}> 
                 <Ionicons name="library-outline" size={20} color={colors.text} style={styles.inputIcon}/> 
@@ -220,6 +231,11 @@ export default function ProfileScreen() {
               </View>
 
               </>
+            ) : (
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, { color: colors.text }]}>Assigned Hostel</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>{profile?.hostel || "Not assigned"}</Text>
+              </View>
             )
           }
               
@@ -321,20 +337,16 @@ export default function ProfileScreen() {
                 }
                 try {
                   setPwdSaving(true)
-                  const res = await commonAPI.changePassword({ currentPassword, newPassword })
+                  const res = await commonAPI.changePassword({ currentPassword, newPassword, confirmPassword })
 
                   console.log(res.message)
                   
                   setPwdSaving(false)
 
-                  if (res?.data?.success) {
-                    Alert.alert("Success", res.data.message || "Password updated")
-                    setCurrentPassword("")
-                    setNewPassword("")
-                    setConfirmPassword("")
-                  } else {
-                    Alert.alert("Error", res?.data?.message || "Failed to change password")
-                  }
+                  Alert.alert("Success", res?.data?.message || "Password updated")
+                  setCurrentPassword("")
+                  setNewPassword("")
+                  setConfirmPassword("")
                 } catch (err) {
                   setPwdSaving(false)
                   console.log("Change password error", err)
@@ -468,6 +480,22 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     borderBottomWidth: 1,
     paddingVertical: SPACING.xs,
+  },
+  pickerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: SPACING.sm,
+  },
+  picker: {
+    flex: 1,
+    height: 50,
   },
   statusContainer: {
     flexDirection: "row",

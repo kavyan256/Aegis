@@ -50,10 +50,16 @@ export const authAPI = {
 // Student API endpoints
 export const commonAPI = {
 
-  getProfile: () => api.get("/student/profile"),
-  updateProfile: (data) => api.put("/student/profile", data),
+  getProfile: () => api.get("/auth/profile"),
+  updateProfile: (data) => api.put("/auth/profile", data),
   getDailyPasskey: () => api.get("/passkey/today"),
-  changePassword: (currentPassword, newPassword) => api.put('/student/passwordUpdate', { currentPassword, newPassword }),
+  changePassword: (currentPassword, newPassword, confirmPassword) => {
+    if (typeof currentPassword === "object" && currentPassword !== null) {
+      return api.put("/student/passwordUpdate", currentPassword)
+    }
+
+    return api.put("/student/passwordUpdate", { currentPassword, newPassword, confirmPassword })
+  },
   getDailyPasskeyGuard: () => api.get("/passkey/todayGuard"),
 }
 
@@ -63,6 +69,14 @@ export const outpass = {
   createOutpass: (data) => api.post("/outpass/generate", data),
   updateOutpass: (id, data) => api.put(`/outpass/${id}`, data),
   getHistory: (params) => api.get("/outpass/history", { params }),
+}
+
+export const wardenAPI = {
+  getDashboard: () => api.get("/warden/dashboard"),
+  getOutpasses: (params) => api.get("/warden/outpasses", { params }),
+  getOutpass: (id) => api.get(`/warden/outpasses/${id}`),
+  actOnOutpass: (id, data) => api.patch(`/warden/outpasses/${id}/action`, data),
+  getMonitoring: (params) => api.get("/warden/monitoring", { params }),
 }
 
 // Emergency API endpoints

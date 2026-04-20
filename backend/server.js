@@ -16,6 +16,7 @@ const emergencyRoutes = require("./routes/emergencyRoutes")
 const adminRoutes = require("./routes/adminRoutes")
 const securityRoutes = require("./routes/securityRoutes")
 const studentRoutes = require("./routes/studentRoutes")
+const wardenRoutes = require("./routes/wardenRoutes")
 const forgotRoutes = require("./routes/forgotRoute")
 
 const app = express()
@@ -65,6 +66,7 @@ app.use("/api/emergency", emergencyRoutes)
 app.use("/api/admin", adminRoutes)
 app.use("/api/security", securityRoutes)
 app.use("/api/student", studentRoutes)
+app.use("/api/warden", wardenRoutes)
 app.use("/api/forgot", forgotRoutes)
 
 // Health check endpoint

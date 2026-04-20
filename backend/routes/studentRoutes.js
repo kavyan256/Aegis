@@ -137,7 +137,7 @@ router.put("/passwordUpdate", authenticate, async (req, res) => {
       },
     })
 
-    return res.status(200).json({ message: "Password Updated Successfully" })
+    return res.status(200).json({ success: true, message: "Password Updated Successfully" })
   } catch (error) {
     console.error("Password update error:", error)
     return res.status(500).json({ message: "Server error updating password" })

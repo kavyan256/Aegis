@@ -1,6 +1,8 @@
 # Aegis ID – Your Secure Digital Campus Pass
 
-Aegis ID is a **mobile-first digital identity and access management system** designed to replace traditional college ID cards and manual entry processes. It offers a secure, fast, and modern way for students, wardens, and campus security to interact within the campus ecosystem.
+Aegis ID is a **mobile-first digital identity and access management system** designed to replace traditional college ID cards and manual entry processes. It offers a secure, fast, and modern way for students, wardens, and campus security to interact within the campus ecosystem. Students can simply Scan & Go at all security entry exit oints and library, Students can request OUTPASS from their hostel wardens without going to them physically, Wardens can Approve and DIsapprove the request etc, Late commers gets ping by the system automatcially and other security features like emergency contacts etc.
+
+
 
 📥 **Installation Guide:** [Click here to view installation.md](installation.md)
 

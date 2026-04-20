@@ -1,172 +1,122 @@
 const express = require("express")
 const { getPrismaClient } = require("../config/prisma")
-const { authenticate } = require("../middleware/auth")
+const { authenticate, authorize } = require("../middleware/auth")
 const { checkOutpassExpiry } = require("../middleware/outpassExpiry")
 const { generateId } = require("../utils/hashGenerator")
+const {
+  outpassInclude,
+  getDayRange,
+  resolveOutpassDateTimes,
+  buildOutpassResponse,
+  getLatestMovementMap,
+  expireOldOutpasses,
+} = require("../utils/outpassLifecycle")
 
 const prisma = getPrismaClient()
 const router = express.Router()
 
-const userSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  studentId: true,
-  hostel: true,
-  roomNumber: true,
-  phoneNumber: true,
-  emergencyContact: true,
+const validateCreatePayload = ({ reason, destination, exitDate, returnDate }) => {
+  if (!reason || !destination || !exitDate || !returnDate) {
+    return "Please provide purpose, destination, departure, and return time"
+  }
+
+  if (returnDate <= exitDate) {
+    return "Expected return time must be after departure time"
+  }
+
+  const now = new Date()
+  const pastThreshold = new Date(now.getTime() - 5 * 60 * 1000)
+  if (exitDate < pastThreshold) {
+    return "Departure time cannot be in the past"
+  }
+
+  return null
 }
 
-const buildOutpassResponse = (outpass) => ({
-  ...outpass,
-  user: outpass.user
-    ? {
-        id: outpass.user.id,
-        name: outpass.user.name,
-        studentId: outpass.user.studentId,
-        hostel: outpass.user.hostel,
-        roomNumber: outpass.user.roomNumber,
-      }
-    : undefined,
-})
+const canStudentCancelOutpass = (outpass, latestMovement) => {
+  if (!["pending", "approved"].includes(outpass.status)) {
+    return false
+  }
 
-const getTodayRange = () => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  if (outpass.actualReturnDate) {
+    return false
+  }
 
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (latestMovement?.action === "exit" && latestMovement.createdAt >= outpass.outDate) {
+    return false
+  }
 
-  return { today, tomorrow }
+  return outpass.outDate > new Date()
 }
 
-async function expireOldOutpasses() {
+router.post("/generate", [authenticate, authorize("student")], async (req, res) => {
   try {
-    const currentDate = new Date()
-    const startOfToday = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
+    await expireOldOutpasses(prisma)
 
-    const expiredOutpasses = await prisma.outpass.updateMany({
-      where: {
-        status: {
-          in: ["pending", "approved"],
-        },
-        OR: [
-          {
-            expectedReturnDate: {
-              lt: currentDate,
-            },
-          },
-          {
-            outDate: {
-              lt: startOfToday,
-            },
-          },
-        ],
-      },
-      data: {
-        status: "expired",
-      },
+    const reason = String(req.body.purpose || req.body.reason || "").trim()
+    const destination = String(req.body.destination || "").trim()
+    const requestRemarks = String(req.body.remarks || "").trim()
+    const emergencyName = String(req.body.emergencyName || req.body.emergencyContactName || "").trim()
+    const emergencyContact = String(req.body.emergencyContact || req.body.emergencyContactPhone || "").trim()
+    const { exitDate, returnDate } = resolveOutpassDateTimes(req.body)
+
+    const validationError = validateCreatePayload({
+      reason,
+      destination,
+      exitDate,
+      returnDate,
     })
 
-    console.log(`Expired ${expiredOutpasses.count} old outpasses`)
-    return expiredOutpasses.count
-  } catch (error) {
-    console.error("Error expiring old outpasses:", error)
-    return 0
-  }
-}
-
-router.post("/generate", authenticate, async (req, res) => {
-  try {
-    const { purpose, destination, fromTime, toTime, emergencyName, emergencyContact } = req.body
-
-    if (!purpose || !destination || !fromTime || !toTime) {
-      return res.status(400).json({
-        message: "Please provide all required fields: purpose, destination, fromTime, toTime",
-      })
+    if (validationError) {
+      return res.status(400).json({ message: validationError })
     }
 
-    const exitDate = new Date(fromTime)
-    const returnDate = new Date(toTime)
-    const currentDate = new Date()
-    const { today, tomorrow } = getTodayRange()
-
-    const exitDateOnly = new Date(exitDate)
-    exitDateOnly.setHours(0, 0, 0, 0)
-
-    if (exitDateOnly.getTime() !== today.getTime()) {
-      return res.status(400).json({
-        message: "Outpass can only be generated for the current day",
-      })
-    }
-
-    const returnDateOnly = new Date(returnDate)
-    returnDateOnly.setHours(0, 0, 0, 0)
-
-    if (returnDateOnly.getTime() !== today.getTime()) {
-      return res.status(400).json({
-        message: "Return time must be on the same day as exit time",
-      })
-    }
-
-    if (returnDate <= exitDate) {
-      return res.status(400).json({
-        message: "Expected return time must be after exit time",
-      })
-    }
-
-    const existingOutpass = await prisma.outpass.findFirst({
+    const conflictingOutpass = await prisma.outpass.findFirst({
       where: {
         userId: req.user.userId,
-        outDate: {
-          gte: today,
-          lt: tomorrow,
-        },
         status: {
           in: ["pending", "approved"],
         },
+        actualReturnDate: null,
+        expectedReturnDate: {
+          gte: new Date(),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     })
 
-    if (existingOutpass) {
+    if (conflictingOutpass) {
       return res.status(400).json({
-        message: "You already have an active outpass for today",
+        message: "You already have an active or pending outpass request",
       })
     }
-
-    await expireOldOutpasses()
 
     const outpass = await prisma.$transaction(async (tx) => {
       const createdOutpass = await tx.outpass.create({
         data: {
           id: generateId(),
           userId: req.user.userId,
-          reason: purpose.trim(),
-          destination: destination.trim(),
+          reason,
+          destination,
           outDate: exitDate,
           expectedReturnDate: returnDate,
           emergencyContactName: emergencyName || null,
           emergencyContactPhone: emergencyContact || null,
-          status: "approved",
-          approvedById: req.user.userId,
+          status: "pending",
         },
-        include: {
-          user: {
-            select: userSelect,
-          },
-        },
+        include: outpassInclude,
       })
 
       await tx.outpassAuditTrail.create({
         data: {
           id: generateId(),
           outpassId: createdOutpass.id,
-          status: "approved",
+          status: "pending",
           changedBy: req.user.userId,
-          changedAt: currentDate,
-          remarks: "Same-day outpass auto-generated and approved",
+          changedAt: new Date(),
+          remarks: requestRemarks || "Outpass request submitted",
         },
       })
 
@@ -174,83 +124,88 @@ router.post("/generate", authenticate, async (req, res) => {
         data: {
           id: generateId(),
           userId: req.user.userId,
-          action: "outpass_generated",
+          action: "outpass_request",
           success: true,
           details: {
-            message: `Same-day outpass generated for ${purpose} to ${destination}`,
+            message: `Outpass requested for ${destination}`,
+            outpassId: createdOutpass.id,
+            requestedExit: exitDate.toISOString(),
+            requestedReturn: returnDate.toISOString(),
           },
           scanType: "manual",
         },
       })
 
-      return createdOutpass
+      return tx.outpass.findUnique({
+        where: { id: createdOutpass.id },
+        include: outpassInclude,
+      })
     })
 
     res.status(201).json({
-      message: "Outpass generated successfully for today",
+      message: "Outpass request submitted successfully",
       outpass: buildOutpassResponse(outpass),
-      validity: {
-        validFrom: exitDate,
-        validUntil: returnDate,
-        expiresAt: new Date(tomorrow.getTime() - 1),
-      },
     })
   } catch (error) {
-    console.error("Outpass generation error:", error)
-    res.status(500).json({ message: "Server error generating outpass" })
+    console.error("Outpass request error:", error)
+    res.status(500).json({ message: "Server error creating outpass request" })
   }
 })
 
-router.get("/history", [authenticate, checkOutpassExpiry], async (req, res) => {
+router.get("/history", [authenticate, authorize("student"), checkOutpassExpiry], async (req, res) => {
   try {
     const { status, limit } = req.query
     const parsedLimit = Math.min(Number.parseInt(limit, 10) || 25, 100)
 
-    const query = {
+    const where = {
       userId: req.user.userId,
+      ...(status && typeof status === "string" && status.trim().length > 0
+        ? {
+            status: status.trim().toLowerCase(),
+          }
+        : {}),
     }
-
-    if (status && typeof status === "string" && status.trim().length > 0) {
-      query.status = status.trim().toLowerCase()
-    }
-
-    await expireOldOutpasses()
 
     const outpasses = await prisma.outpass.findMany({
-      where: query,
-      orderBy: { createdAt: "desc" },
-      take: parsedLimit,
-      include: {
-        user: {
-          select: userSelect,
-        },
+      where,
+      orderBy: {
+        createdAt: "desc",
       },
+      take: parsedLimit,
+      include: outpassInclude,
     })
 
-    res.json({ outpasses: outpasses.map(buildOutpassResponse) })
+    const movementMap = await getLatestMovementMap(prisma, outpasses.map((item) => item.userId))
+
+    res.json({
+      outpasses: outpasses.map((item) =>
+        buildOutpassResponse(item, {
+          latestMovement: movementMap.get(item.userId),
+        }),
+      ),
+    })
   } catch (error) {
     console.error("Outpass history fetch error:", error)
     res.status(500).json({ message: "Server error fetching outpass history" })
   }
 })
 
-router.get("/today", [authenticate, checkOutpassExpiry], async (req, res) => {
+router.get("/today", [authenticate, authorize("student"), checkOutpassExpiry], async (req, res) => {
   try {
-    const { today, tomorrow } = getTodayRange()
+    const { start, end } = getDayRange()
 
     const outpass = await prisma.outpass.findFirst({
       where: {
         userId: req.user.userId,
         outDate: {
-          gte: today,
-          lt: tomorrow,
+          gte: start,
+          lt: end,
         },
       },
-      include: {
-        user: {
-          select: userSelect,
-        },
+      orderBy: {
+        createdAt: "desc",
       },
+      include: outpassInclude,
     })
 
     if (!outpass) {
@@ -260,49 +215,92 @@ router.get("/today", [authenticate, checkOutpassExpiry], async (req, res) => {
       })
     }
 
-    const currentTime = new Date()
-    let currentOutpass = outpass
-
-    if (outpass.expectedReturnDate < currentTime && outpass.status === "approved") {
-      currentOutpass = await prisma.$transaction(async (tx) => {
-        const updatedOutpass = await tx.outpass.update({
-          where: { id: outpass.id },
-          data: {
-            status: "expired",
-          },
-          include: {
-            user: {
-              select: userSelect,
-            },
-          },
-        })
-
-        await tx.outpassAuditTrail.create({
-          data: {
-            id: generateId(),
-            outpassId: outpass.id,
-            status: "expired",
-            changedBy: null,
-            changedAt: currentTime,
-            remarks: "Auto-expired due to return time passed",
-          },
-        })
-
-        return updatedOutpass
-      })
-    }
+    const movementMap = await getLatestMovementMap(prisma, [req.user.userId])
+    const serializedOutpass = buildOutpassResponse(outpass, {
+      latestMovement: movementMap.get(req.user.userId),
+    })
 
     res.json({
-      outpass: buildOutpassResponse(currentOutpass),
-      isActive: currentOutpass.status === "approved" && currentOutpass.expectedReturnDate > currentTime,
-      timeRemaining:
-        currentOutpass.status === "approved"
-          ? Math.max(0, currentOutpass.expectedReturnDate.getTime() - currentTime.getTime())
-          : 0,
+      outpass: serializedOutpass,
+      isActive: ["approved"].includes(serializedOutpass.status),
+      isOngoing: serializedOutpass.monitoringState === "ongoing",
+      timeRemaining: serializedOutpass.timeRemainingMs,
     })
   } catch (error) {
     console.error("Today's outpass fetch error:", error)
     res.status(500).json({ message: "Server error fetching today's outpass" })
+  }
+})
+
+router.put("/:id", [authenticate, authorize("student"), checkOutpassExpiry], async (req, res) => {
+  try {
+    const nextStatus = String(req.body.status || "").trim().toLowerCase()
+
+    if (nextStatus !== "cancelled") {
+      return res.status(400).json({ message: "Only outpass cancellation is supported here" })
+    }
+
+    const outpass = await prisma.outpass.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.user.userId,
+      },
+      include: outpassInclude,
+    })
+
+    if (!outpass) {
+      return res.status(404).json({ message: "Outpass not found" })
+    }
+
+    const movementMap = await getLatestMovementMap(prisma, [req.user.userId])
+    const latestMovement = movementMap.get(req.user.userId)
+
+    if (!canStudentCancelOutpass(outpass, latestMovement)) {
+      return res.status(400).json({
+        message: "This outpass can no longer be cancelled",
+      })
+    }
+
+    const cancellationRemarks = String(req.body.remarks || "").trim() || "Cancelled by student"
+
+    const updatedOutpass = await prisma.$transaction(async (tx) => {
+      await tx.outpass.update({
+        where: {
+          id: outpass.id,
+        },
+        data: {
+          status: "cancelled",
+        },
+      })
+
+      await tx.outpassAuditTrail.create({
+        data: {
+          id: generateId(),
+          outpassId: outpass.id,
+          status: "cancelled",
+          changedBy: req.user.userId,
+          changedAt: new Date(),
+          remarks: cancellationRemarks,
+        },
+      })
+
+      return tx.outpass.findUnique({
+        where: {
+          id: outpass.id,
+        },
+        include: outpassInclude,
+      })
+    })
+
+    res.json({
+      message: "Outpass cancelled successfully",
+      outpass: buildOutpassResponse(updatedOutpass, {
+        latestMovement,
+      }),
+    })
+  } catch (error) {
+    console.error("Outpass cancellation error:", error)
+    res.status(500).json({ message: "Server error cancelling outpass" })
   }
 })
 

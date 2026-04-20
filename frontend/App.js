@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext'; // Make sure to import ThemeProvider
 import MainTabNavigator from './navigation/MainTabNavigator';
+import WardenTabNavigator from './navigation/WardenTabNavigator';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import LoadingScreen from './screens/LoadingScreen';
@@ -34,7 +35,11 @@ function RootNavigator() {
           <Stack.Screen name="Scan" component={Scanner} />  
           <Stack.Screen name="Library" component={LibraryScreen} /> 
         </>
-        ):
+        ) : user.role == 'warden' ? (
+        <>
+          <Stack.Screen name="WardenMain" component={WardenTabNavigator} />
+        </>
+        ) :
         (<>
           <Stack.Screen name="GuardMain" component={GuardDashboardScreen} />
           <Stack.Screen name="SAC" component={SACScreen} />

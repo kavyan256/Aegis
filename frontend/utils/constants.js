@@ -56,6 +56,8 @@ export const OUTPASS_STATUS = {
   PENDING: "pending",
   APPROVED: "approved",
   REJECTED: "rejected",
+  EXPIRED: "expired",
+  CANCELLED: "cancelled",
   ACTIVE: "active",
   COMPLETED: "completed",
 }

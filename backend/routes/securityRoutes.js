@@ -2,6 +2,7 @@ const express = require("express")
 const { getPrismaClient } = require("../config/prisma")
 const { authenticate } = require("../middleware/auth")
 const { generateId } = require("../utils/hashGenerator")
+const { outpassInclude } = require("../utils/outpassLifecycle")
 
 const prisma = getPrismaClient()
 const router = express.Router()
@@ -171,6 +172,8 @@ router.post("/log", authenticate, async (req, res) => {
       action = previousLog?.action === "entry" ? "exit" : "entry"
     }
 
+    const timestamp = new Date()
+
     const log = await prisma.log.create({
       data: {
         id: generateId(),
@@ -191,10 +194,92 @@ router.post("/log", authenticate, async (req, res) => {
       },
     })
 
+    let linkedOutpass = null
+
+    if (scannedUser.role === "student" && ["entry", "exit"].includes(action)) {
+      const candidateOutpass = await prisma.outpass.findFirst({
+        where: {
+          userId: scannedUser.id,
+          status: {
+            in: ["approved", "expired"],
+          },
+          actualReturnDate: null,
+          outDate: {
+            lte: timestamp,
+          },
+        },
+        orderBy: [
+          { outDate: "desc" },
+          { createdAt: "desc" },
+        ],
+        include: outpassInclude,
+      })
+
+      if (candidateOutpass) {
+        linkedOutpass = candidateOutpass
+
+        if (action === "entry") {
+          linkedOutpass = await prisma.$transaction(async (tx) => {
+            await tx.outpass.update({
+              where: {
+                id: candidateOutpass.id,
+              },
+              data: {
+                actualReturnDate: timestamp,
+              },
+            })
+
+            await tx.outpassAuditTrail.create({
+              data: {
+                id: generateId(),
+                outpassId: candidateOutpass.id,
+                status: candidateOutpass.status,
+                changedBy: req.user.userId,
+                changedAt: timestamp,
+                remarks:
+                  candidateOutpass.status === "expired"
+                    ? "Student returned to campus after the outpass window had expired"
+                    : "Student returned to campus",
+              },
+            })
+
+            return tx.outpass.findUnique({
+              where: {
+                id: candidateOutpass.id,
+              },
+              include: outpassInclude,
+            })
+          })
+        }
+
+        if (action === "exit") {
+          await prisma.outpassAuditTrail.create({
+            data: {
+              id: generateId(),
+              outpassId: candidateOutpass.id,
+              status: candidateOutpass.status,
+              changedBy: req.user.userId,
+              changedAt: timestamp,
+              remarks: "Student exited campus using an approved outpass",
+            },
+          })
+        }
+      }
+    }
+
     res.status(200).json({
       message: "Security log created successfully",
       log,
       user: scannedUser,
+      outpass: linkedOutpass
+        ? {
+            id: linkedOutpass.id,
+            status: linkedOutpass.status,
+            outDate: linkedOutpass.outDate,
+            expectedReturnDate: linkedOutpass.expectedReturnDate,
+            actualReturnDate: linkedOutpass.actualReturnDate,
+          }
+        : null,
     })
   } catch (error) {
     console.error("Security log error:", error)

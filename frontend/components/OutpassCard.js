@@ -2,7 +2,7 @@
 
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { commonAPI } from "../services/api"
+import { outpass as outpassAPI } from "../services/api"
 import { COLORS, FONTS, SIZES, SPACING, OUTPASS_STATUS } from "../utils/constants"
 
 export default function OutpassCard({ outpass, onUpdate }) {
@@ -14,6 +14,10 @@ export default function OutpassCard({ outpass, onUpdate }) {
         return COLORS.success
       case OUTPASS_STATUS.REJECTED:
         return COLORS.error
+      case OUTPASS_STATUS.EXPIRED:
+        return COLORS.gray[500]
+      case OUTPASS_STATUS.CANCELLED:
+        return "#f97316"
       case OUTPASS_STATUS.ACTIVE:
         return COLORS.primary
       case OUTPASS_STATUS.COMPLETED:
@@ -31,6 +35,10 @@ export default function OutpassCard({ outpass, onUpdate }) {
         return "checkmark-circle-outline"
       case OUTPASS_STATUS.REJECTED:
         return "close-circle-outline"
+      case OUTPASS_STATUS.EXPIRED:
+        return "time-outline"
+      case OUTPASS_STATUS.CANCELLED:
+        return "ban-outline"
       case OUTPASS_STATUS.ACTIVE:
         return "play-circle-outline"
       case OUTPASS_STATUS.COMPLETED:
@@ -64,18 +72,20 @@ export default function OutpassCard({ outpass, onUpdate }) {
         style: "destructive",
         onPress: async () => {
           try {
-            const response = await commonAPI.updateOutpass(outpass._id, { status: "cancelled" })
-            onUpdate(response.data)
+            const response = await outpassAPI.updateOutpass(outpass._id || outpass.id, { status: "cancelled" })
+            onUpdate(response.data?.outpass || response.data)
             Alert.alert("Success", "Outpass cancelled successfully")
           } catch (error) {
-            Alert.alert("Error", "Failed to cancel outpass")
+            Alert.alert("Error", error?.response?.data?.message || "Failed to cancel outpass")
           }
         },
       },
     ])
   }
 
-  const canCancel = outpass.status === OUTPASS_STATUS.PENDING || outpass.status === OUTPASS_STATUS.APPROVED
+  const canCancel =
+    outpass.status === OUTPASS_STATUS.PENDING ||
+    (outpass.status === OUTPASS_STATUS.APPROVED && outpass.monitoringState !== "ongoing")
 
   return (
     <View style={styles.card}>
@@ -136,6 +146,13 @@ export default function OutpassCard({ outpass, onUpdate }) {
             <Text style={styles.remarksText}>{outpass.remarks}</Text>
           </View>
         )}
+
+        {outpass.latestStatusRemark && outpass.latestStatusRemark !== outpass.remarks ? (
+          <View style={styles.remarksContainer}>
+            <Text style={styles.remarksLabel}>Latest Update:</Text>
+            <Text style={styles.remarksText}>{outpass.latestStatusRemark}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.cardFooter}>
