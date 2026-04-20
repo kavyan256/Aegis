@@ -71,10 +71,39 @@ export default function RegisterScreen({ navigation }) {
   }
 
   const validateForm = () => {
-    const { name, email, password, confirmPassword, studentId, department, year, hostel, phone, gender, deviceId } = formData
+    const {
+      name,
+      email,
+      password,
+      confirmPassword,
+      studentId,
+      guardId,
+      department,
+      year,
+      hostel,
+      phone,
+      gender,
+      role,
+      securityPost,
+    } = formData
 
-    if (!name || !email || !password || !studentId || !department || !year || !hostel || !phone || !gender) {
+    if (!name || !email || !password || !confirmPassword || !phone || !gender || !role) {
       Alert.alert("Error", "Please fill in all required fields")
+      return false
+    }
+
+    if (role === "student" && (!studentId || !department || !year || !hostel)) {
+      Alert.alert("Error", "Please fill in all required student fields")
+      return false
+    }
+
+    if (role === "warden" && !hostel) {
+      Alert.alert("Error", "Please fill in all required warden fields")
+      return false
+    }
+
+    if (role === "security" && (!guardId || !securityPost)) {
+      Alert.alert("Error", "Please fill in all required security fields")
       return false
     }
 

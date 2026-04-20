@@ -93,10 +93,77 @@ router.post("/validate", authenticate, async (req, res) => {
 
 router.post("/log", authenticate, async (req, res) => {
   try {
-    let { action, location, guardId, guardName } = req.body
-    const allowedActions = new Set(["entry", "exit", "scan_attempt"])
+    let { action, location, guardId, guardName, userId, studentId, hash } = req.body
+    const allowedActions = new Set(["entry", "exit"])
+
+    let scannedUser = null
+
+    if (userId) {
+      scannedUser = await prisma.user.findUnique({
+        where: { id: String(userId) },
+        select: {
+          id: true,
+          name: true,
+          studentId: true,
+          role: true,
+          hostel: true,
+          roomNumber: true,
+        },
+      })
+    }
+
+    if (!scannedUser && studentId) {
+      scannedUser = await prisma.user.findFirst({
+        where: { studentId: String(studentId) },
+        select: {
+          id: true,
+          name: true,
+          studentId: true,
+          role: true,
+          hostel: true,
+          roomNumber: true,
+        },
+      })
+    }
+
+    if (!scannedUser && hash) {
+      const passkey = await prisma.passkey.findFirst({
+        where: {
+          hash: String(hash),
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              studentId: true,
+              role: true,
+              hostel: true,
+              roomNumber: true,
+            },
+          },
+        },
+      })
+
+      scannedUser = passkey?.user || null
+    }
+
+    if (!scannedUser) {
+      return res.status(400).json({
+        message: "Invalid QR data. Unable to identify scanned student.",
+      })
+    }
+
     const previousLog = await prisma.log.findFirst({
-      where: { userId: req.user.userId },
+      where: {
+        userId: scannedUser.id,
+        action: {
+          in: ["entry", "exit"],
+        },
+      },
       orderBy: { createdAt: "desc" },
     })
 
@@ -107,14 +174,18 @@ router.post("/log", authenticate, async (req, res) => {
     const log = await prisma.log.create({
       data: {
         id: generateId(),
-        userId: req.user.userId,
+        userId: scannedUser.id,
         action,
         location: location || null,
-        guardId: guardId || null,
-        guardName: guardName || null,
+        guardId: req.user.guardId || guardId || null,
+        guardName: req.user.name || guardName || null,
         success: true,
         details: {
           message: "Security log created successfully",
+          scannedUserId: scannedUser.id,
+          scannedStudentId: scannedUser.studentId || null,
+          scannedUserName: scannedUser.name,
+          scannedByUserId: req.user.userId,
         },
         scanType: "manual",
       },
@@ -123,6 +194,7 @@ router.post("/log", authenticate, async (req, res) => {
     res.status(200).json({
       message: "Security log created successfully",
       log,
+      user: scannedUser,
     })
   } catch (error) {
     console.error("Security log error:", error)

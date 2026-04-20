@@ -74,7 +74,9 @@ export default function LogBook({ navigation, route }) {
   const renderLog = useCallback(
     ({ item }) => {
       const actionLabel = item.action === "entry" ? "Entry" : item.action === "exit" ? "Exit" : item.action
-      const residentName = item?.userId?.name || "Resident"
+      const residentName = item?.user?.name || item?.details?.scannedUserName || "Resident"
+      const residentStudentId = item?.user?.studentId || item?.details?.scannedStudentId || "-"
+      const residentSystemId = item?.user?.id || item?.userId || item?.details?.scannedUserId || "-"
       const guardOnDuty = item.guardName || "Guard"
       const timestamp = item?.createdAt ? new Date(item.createdAt).toLocaleString() : "Unknown"
 
@@ -92,7 +94,9 @@ export default function LogBook({ navigation, route }) {
           ]}
         >
           <Text style={[styles.sectionTitle, { textAlign: "left", color: colors.text }]}>{actionLabel}</Text>
-          <Text style={{ color: subTextColor, marginBottom: 4 }}>Resident: {residentName}</Text>
+          <Text style={{ color: subTextColor, marginBottom: 4 }}>Name: {residentName}</Text>
+          <Text style={{ color: subTextColor, marginBottom: 4 }}>Student ID: {residentStudentId}</Text>
+          <Text style={{ color: subTextColor, marginBottom: 4 }}>User ID: {residentSystemId}</Text>
           <Text style={{ color: subTextColor, marginBottom: 4 }}>Guard: {guardOnDuty}</Text>
           <Text style={{ color: subTextColor, marginBottom: 4 }}>Location: {item.location || "-"}</Text>
           <Text style={{ color: subTextColor, fontSize: 12 }}>Time: {timestamp}</Text>
@@ -139,7 +143,7 @@ export default function LogBook({ navigation, route }) {
       ) : (
         <FlatList
           data={logs}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item.id}
           renderItem={renderLog}
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

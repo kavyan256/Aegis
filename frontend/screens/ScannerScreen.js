@@ -27,7 +27,6 @@ export default function Scanner({ navigation }) {
   const [action, setAction] = useState("");
   const [loc, setLoc] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const [scanMode, setScanMode] = useState("entry"); // "entry" or "exit"
 
   useEffect(() => {
     if (!permission) {
@@ -45,14 +44,25 @@ export default function Scanner({ navigation }) {
   const handleBarCodeScanned = async ({ type, data }) => {
     if (!scanned) {
       setScanned(true);
-      const { guardId, location } = JSON.parse(data);
-      setLoc(location);
-      const responce = await securityAPI.logEntry({
-        action: scanMode,
-        guardId: guardId,
-        location: location,
-      });
-      setAction(responce.data.log.action);
+      try {
+        const parsed = JSON.parse(data);
+        const location = parsed?.location || "";
+
+        setLoc(location);
+
+        const response = await securityAPI.logEntry({
+          location,
+          hash: parsed?.hash,
+          studentId: parsed?.studentId,
+          userId: parsed?.userId,
+        });
+
+        setAction(response?.data?.log?.action || "");
+      } catch (error) {
+        console.log("QR scan error:", error?.response?.data || error);
+        Alert.alert("Invalid QR", error?.response?.data?.message || "Unable to scan this QR code");
+        setScanned(false);
+      }
 
     }
   };
